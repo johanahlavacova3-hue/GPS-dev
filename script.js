@@ -51,7 +51,7 @@ class Perlin {
 }
 const perlin = new Perlin();
 
-// --- FUNKCE: GENETIKA SOUŘADNIC (Upraveno pro 3D Fade) ---
+// --- FUNKCE: GENETIKA SOUŘADNIC (Upraveno pro nostalgii a kontrast) ---
 function CoordinateGenetics(lat, lon) {
     const traits = {};
     const latStr = String(lat.toFixed(8)).replace('.', '');
@@ -76,9 +76,9 @@ function CoordinateGenetics(lat, lon) {
     traits.ShapeMode = 0; 
     if (fifthDigitLat === 0) { traits.ShapeMode = 3; } 
     else if (fifthDigitLat < 5) { traits.ShapeMode = 1; } 
-    else { traits.ShapeMode = 2; } 
+    else { traits.ShapeMode = 2; } // Nyní Ostrá Pavučina
 
-    // Rotace (zůstává)
+    // Rotace (zůstává, dává objektu orientaci)
     const lastFourLon = N.slice(-4);
     const sumLastFour = lastFourLon.reduce((a, b) => a + b, 0);
     traits.RotationFactor = 0;
@@ -92,23 +92,29 @@ function CoordinateGenetics(lat, lon) {
     }
     
     // Vlastnosti pro "Nostalgii"
-    traits.GrainIntensity = 0.8 + (N[N.length - 1] / 9 * 0.2); 
-    traits.VignetteIntensity = 0.5 + (L[0] / 9) * 0.5; 
+    traits.GrainIntensity = 0.8 + (N[N.length - 1] / 9 * 0.2); // Konstantně vysoká zrnitost
+    traits.VignetteIntensity = 0.5 + (L[0] / 9) * 0.5; // Síla vinětace (0.5 až 1.0)
     
     const sumDigits = L.reduce((a, b) => a + b, 0);
-    traits.PosterizationLevels = 4 + (sumDigits % 5); 
+    traits.PosterizationLevels = 4 + (sumDigits % 5); // 4-8 úrovní šedé
+
+    // Odstraněny barevné vlastnosti (C_Shift)
+    for (let k = 0; k < 38; k++) {
+        const i = k % Digits.length;
+        const d_i = Digits[i] || 1;
+        traits[`F${k}_Mod`] = 1 + (d_i * Math.sin(lat * k) * 0.5);
+    }
     
-    // Úprava pro 3D FADE (pomalejší pokles = jemnější hloubka)
     const sumFirstFourLat = L.slice(0, 4).reduce((a, b) => a + b, 0);
-    traits.Octaves = 4 + Math.min(3, Math.floor(sumFirstFourLat / 8)); 
-    // Nový parametr pro sílu nízkofrekvenčního "fade"
-    traits.LowFreqWeight = 0.5 + Math.sin(lat * 10) * 0.5; 
+    traits.Octaves = 4 + Math.min(3, Math.floor(sumFirstFourLat / 8)); // 4-7 oktáv pro detail
+    
+    // Odstraněn LowFreqWeight (to způsobovalo "mlhu")
 
     return traits;
 }
 
 
-// --- FUNKCE PRO VYKRESLOVÁNÍ OBRAZU (Upraveno pro 3D Fade) ---
+// --- FUNKCE PRO VYKRESLOVÁNÍ OBRAZU (Upraveno pro Monochromatický Objekt) ---
 function generateGrainyImage(lat, lon) {
     GENETIC_TRAITS = CoordinateGenetics(lat, lon);
     const T = GENETIC_TRAITS;
@@ -145,39 +151,37 @@ function generateGrainyImage(lat, lon) {
             const ny = (rotatedY * T.ScaleY * T.F1_Mod) + noiseOffsetY;
             
             let n = 0;
-            let amplitude = 1; 
+            let amplitude = 1; // Bez LowFreqWeight, aby to nebyla mlha
             let frequency = 1;
             
-            // Octave Loop s pomalejším poklesem (0.6 místo 0.5 pro jemnější fade)
+            // Více oktáv pro detail (vytváří "objekt")
             for (let oct = 0; oct < T.Octaves; oct++) {
                 n += perlin.noise(nx * frequency, ny * frequency + baseSeed) * amplitude;
-                amplitude *= 0.6; 
+                amplitude *= 0.5; // Rychlejší pokles = více detailů, méně mlhy
                 frequency *= 2;
             }
             
-            // Přidání silné nízkofrekvenční složky pro 3D efekt (světlo/stín)
-            n += perlin.noise(nx * 0.1, ny * 0.1 + baseSeed) * -T.LowFreqWeight; 
-            
+            // Odstraněna negativní oktáva (ta dělala mlhu)
             n = (n + 1) / 2; 
 
             // Aplikace kontrastu pro "objekt"
             let contrastN = n;
-            if (T.ShapeMode === 1) { 
+            if (T.ShapeMode === 1) { // Organický tvar uprostřed
                 const dist = Math.sqrt(fx * fx + fy * fy) / width;
                 contrastN = n * (1 - Math.pow(dist, 0.5) * 0.7); 
-            } else if (T.ShapeMode === 2) { 
-                 contrastN = (Math.abs(n - 0.5) < 0.02) ? 0.0 : 1.0; 
-            } else if (T.ShapeMode === 3) { 
+            } else if (T.ShapeMode === 2) { // OSTRÁ Pavučina (pro kontrast)
+                 contrastN = (Math.abs(n - 0.5) < 0.02) ? 0.0 : 1.0; // Velmi tenké, ostré linky
+            } else if (T.ShapeMode === 3) { // Diagonální
                  contrastN = n * 0.7 + Math.sin((rotatedX + rotatedY) / width * Math.PI) * 0.3;
             }
             
             // Aplikace "Nostalgie"
             // 1. Vinětace
-            const v_dist = Math.sqrt(fx*fx + fy*fy) / (width * 0.7); 
+            const v_dist = Math.sqrt(fx*fx + fy*fy) / (width * 0.7); // Těsnější vinětace
             const vignette = 1.0 - (v_dist * T.VignetteIntensity);
             let finalN = contrastN * vignette;
             
-            // 2. Posterizace
+            // 2. Posterizace (Nostalgický vzhled)
             const posterStep = 255 / T.PosterizationLevels;
             let base_value = Math.floor((finalN * 255) / posterStep) * posterStep;
 
@@ -187,15 +191,15 @@ function generateGrainyImage(lat, lon) {
             // --- Finální pixel (MONOCHROMATICKÝ) ---
             const finalValue = Math.floor(Math.max(0, Math.min(255, base_value + grain)));
             
-            data[i] = finalValue;     
-            data[i+1] = finalValue;   
-            data[i+2] = finalValue;   
-            data[i+3] = 255;          
+            data[i] = finalValue;     // R
+            data[i+1] = finalValue;   // G
+            data[i+2] = finalValue;   // B
+            data[i+3] = 255;          // A
         }
     }
     ctx.putImageData(imgData, 0, 0);
-    // Aktualizace statusu 
-    statusEl.textContent = `Tvar: ${['Default','Objekt','Linky','Diagonála'][T.ShapeMode]}, Úrovně: ${T.PosterizationLevels}, Fade: ${T.LowFreqWeight.toFixed(2)}`;
+    // Aktualizace statusu (nyní skrytého) o aplikovaných pravidlech
+    statusEl.textContent = `Tvar: ${['Default','Objekt','Linky','Diagonála'][T.ShapeMode]}, Úrovně: ${T.PosterizationLevels}, Vign: ${T.VignetteIntensity.toFixed(2)}`;
 }
 
 
