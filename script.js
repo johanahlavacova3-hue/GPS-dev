@@ -14,7 +14,6 @@ let baseLat = DEFAULT_LAT;
 let baseLon = DEFAULT_LON;
 let wheelRotation = 0;
 
-// Objekt pro uchování všech 50 dynamicky vypočítaných vlastností
 let GENETIC_TRAITS = {};
 
 // --- TŘÍDA PERLIN NOISE (Zůstává nezměněna) ---
@@ -58,14 +57,11 @@ class Perlin {
 const perlin = new Perlin();
 
 
-// --- HLAVNÍ FUNKCE: GENETIKA SOUŘADNIC (CoordinateGenetics) ---
+// --- FUNKCE: GENETIKA SOUŘADNIC (CoordinateGenetics) ---
 function CoordinateGenetics(lat, lon) {
     const traits = {};
-    // Používáme pevné 8 desetinných míst pro extrakci číslic
     const latStr = String(lat.toFixed(8)).replace('.', '');
     const lonStr = String(lon.toFixed(8)).replace('.', '');
-    
-    // Extrahování číslic
     const L = latStr.split('').map(Number);
     const N = lonStr.split('').map(Number);
     const Digits = L.concat(N);
@@ -74,7 +70,7 @@ function CoordinateGenetics(lat, lon) {
     const lat10k = lat * 10000;
     const lon10k = lon * 10000;
     
-    // VLASTNOST 1-3: Hlavní chaotický Seed (Tangens a Modulo pro extrémní změnu)
+    // VLASTNOST 1-3: Hlavní chaotický Seed (pro extrémní změnu)
     traits.Seed_A = Math.tan(lat10k % 100) * 1234;
     traits.Seed_B = Math.tan(lon10k % 100) * 5678;
     traits.FinalSeed = (traits.Seed_A * traits.Seed_B) / 1000;
@@ -82,59 +78,50 @@ function CoordinateGenetics(lat, lon) {
     // VLASTNOST 4-7: Offsety a Měřítko (Scale)
     traits.OffsetX = Math.pow(lat10k, 2) * 0.00001;
     traits.OffsetY = Math.pow(lon10k, 2) * 0.00001;
-    traits.ScaleX = 0.002 + (Math.sin(traits.FinalSeed * 0.0001) * 0.0015);
-    traits.ScaleY = 0.002 + (Math.cos(traits.FinalSeed * 0.0001) * 0.0015);
+    // Měřítko sníženo pro větší 'zoom' a organičtější vzhled
+    traits.ScaleX = 0.0015 + (Math.sin(traits.FinalSeed * 0.0001) * 0.001);
+    traits.ScaleY = 0.0015 + (Math.cos(traits.FinalSeed * 0.0001) * 0.001);
 
     // 2. PRAVIDLA ZÁVISLÁ NA ČÍSLICÍCH
-    
-    // Pravidlo A (Vlastnost 8): Tvar uprostřed (5. číslo v Lat)
     const fifthDigitLat = L[4] || 0;
-    traits.ShapeMode = 0; // 0 = default, 1 = organický, 2 = pavučina, 3 = diagonální
-
+    traits.ShapeMode = 0; 
     if (fifthDigitLat === 0) {
-        traits.ShapeMode = 3; // Diagonální
+        traits.ShapeMode = 3; 
     } else if (fifthDigitLat < 5) {
-        traits.ShapeMode = 1; // Organický/Rozmazaný
+        traits.ShapeMode = 1; 
     } else {
-        traits.ShapeMode = 2; // Pavučina/Ostře linkovaný
+        traits.ShapeMode = 2; 
     }
 
-    // Pravidlo B (Vlastnost 9-11): Rotace a "Varhánky" (Poslední 4 čísla)
     const lastFourLon = N.slice(-4);
     const sumLastFour = lastFourLon.reduce((a, b) => a + b, 0);
-
     traits.RotationFactor = 0;
     traits.WarpingIntensity = 0.0;
-
     if (sumLastFour > 20) {
         const evenRotation = N.filter(d => d % 2 === 0).reduce((a, b) => a + b, 0);
-        traits.RotationFactor = evenRotation * 0.05; // Mírnější rotace
-        traits.WarpingIntensity = 0.8; // Silnější varhánky
-        traits.ColorHeat = 1; // Teplý k sobě
+        traits.RotationFactor = evenRotation * 0.05; 
+        traits.WarpingIntensity = 0.8; 
+        traits.ColorHeat = 1; 
     } else {
-        traits.RotationFactor = 0;
-        traits.WarpingIntensity = 0.2; // Lehké varhánky
-        traits.ColorHeat = 0; // Studený/Mono
+        traits.WarpingIntensity = 0.2; 
+        traits.ColorHeat = 0; 
     }
     
-    // VLASTNOST 12: Náhodnost zrnitosti (z poslední číslice Lon)
-    traits.GrainIntensity = 0.5 + (N[N.length - 1] / 9 * 0.5); // Vyšší základní zrnitost
+    // VLASTNOST 12: Náhodnost zrnitosti ZVÝŠENA
+    traits.GrainIntensity = 0.7 + (N[N.length - 1] / 9 * 0.3);
 
-    // VLASTNOST 13-50: Vytvoření dalších 38 proměnných pro extrémní detail
+    // VLASTNOST 13-50: Vytvoření dalších 38 proměnných
     for (let k = 0; k < 38; k++) {
         const i = k % Digits.length;
         const d_i = Digits[i] || 1;
-
-        // Větší rozsah pro modifikaci Frekvence (pro lepší detail)
         traits[`F${k}_Mod`] = 1 + (d_i * Math.sin(lat * k) * 0.5);
-        
-        // Větší rozsah pro barevné posuny, ale stále plynulé
         traits[`C${k}_Shift`] = Math.sin(lat10k * d_i + lon10k * k) * 40; 
     }
     
     // VLASTNOST 51: Počet oktáv
     const sumFirstFourLat = L.slice(0, 4).reduce((a, b) => a + b, 0);
-    traits.Octaves = 4 + Math.min(3, Math.floor(sumFirstFourLat / 8)); // 4 až 7 oktáv
+    traits.Octaves = 5 + Math.min(2, Math.floor(sumFirstFourLat / 8)); // Více nízkofrekvenčních složek
+    traits.LowFreqWeight = 1.0 + Math.sin(lat * 10) * 0.5; // Zesílení nízkých frekvencí
 
     return traits;
 }
@@ -143,9 +130,8 @@ function CoordinateGenetics(lat, lon) {
 // --- FUNKCE PRO VYKRESLOVÁNÍ OBRAZU (generateGrainyImage) ---
 
 function generateGrainyImage(lat, lon) {
-    // 1. Získání genetických vlastností
     GENETIC_TRAITS = CoordinateGenetics(lat, lon);
-    const T = GENETIC_TRAITS; // Alias
+    const T = GENETIC_TRAITS;
 
     const imgData = ctx.createImageData(canvas.width, canvas.height);
     const data = imgData.data;
@@ -157,7 +143,6 @@ function generateGrainyImage(lat, lon) {
     const noiseOffsetY = T.OffsetY * 100 + T.FinalSeed / 1000;
     const baseSeed = T.FinalSeed * 0.0001;
     
-    // Rotace (příprava matice rotace)
     const rot = T.RotationFactor * Math.PI / 180;
     const cosR = Math.cos(rot);
     const sinR = Math.sin(rot);
@@ -168,15 +153,13 @@ function generateGrainyImage(lat, lon) {
         for (let x = 0; x < width; x++) {
             const i = (y * width + x) * 4;
 
-            // A. Aplikace rotace a varhánků (Warping)
+            // A. Rotace a Varhánky (Warping)
             let fx = x - centerX;
             let fy = y - centerY;
             
-            // Základní rotace
             let rotatedX = fx * cosR - fy * sinR;
             let rotatedY = fx * sinR + fy * cosR;
 
-            // Varhánky (Warping) – Sinusoida
             const warpX = Math.sin(fy * 0.02) * 20 * T.WarpingIntensity;
             const warpY = Math.cos(fx * 0.02) * 20 * T.WarpingIntensity;
             
@@ -184,36 +167,38 @@ function generateGrainyImage(lat, lon) {
             rotatedY += warpY;
             
             // B. Perlinův šum s Genetickými vlastnostmi
-            // Použijeme jednu z chaotických proměnných (F1_Mod) k modifikaci frekvence
             const nx = (rotatedX * T.ScaleX * T.F1_Mod) + noiseOffsetX;
             const ny = (rotatedY * T.ScaleY * T.F1_Mod) + noiseOffsetY;
             
             let n = 0;
-            let amplitude = 1;
+            let amplitude = T.LowFreqWeight; // Začínáme s vyšší amplitudou pro nízké frekvence
             let frequency = 1;
             
             // Víceoktávový šum
             for (let oct = 0; oct < T.Octaves; oct++) {
+                // Potlačení vysokých frekvencí (amplitude *= 0.7 místo 0.5) pro menší detaily
                 n += perlin.noise(nx * frequency, ny * frequency + baseSeed) * amplitude;
-                amplitude *= 0.5;
+                amplitude *= 0.7; 
                 frequency *= 2;
             }
             
-            // Protilehlá oktáva pro tmavší stíny a hloubku (jako ve vašem referenčním obrázku)
-            n += perlin.noise(nx * 0.1, ny * 0.1) * -0.5;
+            // Protilehlá oktáva pro hloubku a organický stín
+            n += perlin.noise(nx * 0.1 * T.LowFreqWeight, ny * 0.1 * T.LowFreqWeight) * -0.6; // Silnější negativní vliv
 
             n = (n + 1) / 2; // Normalizace 0..1
 
             // C. Speciální Filtry pro Tvar (ShapeMode)
             let finalN = n;
             
-            if (T.ShapeMode === 1) { // Organický tvar uprostřed
+            if (T.ShapeMode === 1) { // Organický tvar uprostřed (měkký přechod)
                 const dist = Math.sqrt(fx * fx + fy * fy) / width;
-                finalN = n * (1 - dist * 0.5) + dist * 0.5; // Míchání středu s šumem
-            } else if (T.ShapeMode === 2) { // Pavučina (kontrastní linky)
-                 finalN = (Math.abs(n - 0.5) < 0.05) ? 0.0 : 1.0; // Silný kontrastní filtr
+                finalN = n * (1 - Math.pow(dist, 0.5) * 0.7); // Měkká Gaussova křivka
+            } else if (T.ShapeMode === 2) { // Pavučina (Převedeno na měkký přechod místo ostrého)
+                 // Vytvoření "měkkých linek" - nespouštíme ostrý filtr, ale zesilujeme kontrast plynule
+                 finalN = Math.pow(n, 1.5); // Nelineární zvýšení kontrastu
             } else if (T.ShapeMode === 3) { // Diagonální
-                 finalN = n * 0.5 + ((rotatedX + rotatedY) / width) * 0.5;
+                 // Mírný, plynulý diagonální posun
+                 finalN = n * 0.7 + Math.sin((rotatedX + rotatedY) / width * Math.PI) * 0.3;
             }
             
             // D. Vykreslování pixelu
@@ -222,18 +207,19 @@ function generateGrainyImage(lat, lon) {
             
             let r, g, b;
             
-            // Vylepšené barevné schéma pro hloubku a přechody
+            // Vylepšené barevné schéma pro plynulý fade
             const colorShiftX = Math.sin(x / 100 + T.C1_Shift * 0.01) * 70;
             const colorShiftY = Math.cos(y / 100 + T.C2_Shift * 0.01) * 70;
 
             if (T.ColorHeat === 1) { // Teplý k sobě (Červená-Žlutá)
-                 r = Math.floor(Math.max(0, Math.min(255, base_value + grain + colorShiftX * 0.8)));
-                 g = Math.floor(Math.max(0, Math.min(255, base_value * 0.7 + grain * 0.7 + colorShiftY * 0.5)));
-                 b = Math.floor(Math.max(0, Math.min(255, base_value * 0.3 + grain * 0.3)));
+                 // Měkké míchání barev (menší násobení)
+                 r = Math.floor(Math.max(0, Math.min(255, base_value + grain + colorShiftX * 0.6)));
+                 g = Math.floor(Math.max(0, Math.min(255, base_value * 0.8 + grain * 0.6 + colorShiftY * 0.4)));
+                 b = Math.floor(Math.max(0, Math.min(255, base_value * 0.4 + grain * 0.4)));
             } else { // Studený/Mono (Modrá-Zelená)
-                 r = Math.floor(Math.max(0, Math.min(255, base_value * 0.3 + grain * 0.5)));
-                 g = Math.floor(Math.max(0, Math.min(255, base_value + grain + colorShiftY * 0.8)));
-                 b = Math.floor(Math.max(0, Math.min(255, base_value * 1.2 + grain * 1.5 - colorShiftX * 0.5)));
+                 r = Math.floor(Math.max(0, Math.min(255, base_value * 0.4 + grain * 0.5)));
+                 g = Math.floor(Math.max(0, Math.min(255, base_value + grain * 0.8 + colorShiftY * 0.6)));
+                 b = Math.floor(Math.max(0, Math.min(255, base_value * 1.1 + grain * 1.2 - colorShiftX * 0.4)));
             }
             
             data[i] = r;
@@ -244,8 +230,7 @@ function generateGrainyImage(lat, lon) {
     }
 
     ctx.putImageData(imgData, 0, 0);
-    // Aktualizace statusu s aplikovanými pravidly
-    statusEl.textContent = `Tvar: ${['Default','Organický','Pavučina','Diagonální'][T.ShapeMode]}, Rotace: ${T.RotationFactor.toFixed(2)}°, Varhánky: ${T.WarpingIntensity.toFixed(1)}`;
+    statusEl.textContent = `Tvar: ${['Default','Organický','Fade','Diagonální'][T.ShapeMode]}, Rotace: ${T.RotationFactor.toFixed(2)}°, Varhánky: ${T.WarpingIntensity.toFixed(1)}, Grain: ${T.GrainIntensity.toFixed(2)}`;
 }
 
 
@@ -270,7 +255,7 @@ input.addEventListener('input', () => {
     if (parsed) {
         baseLat = parsed.lat;
         baseLon = parsed.lon;
-        lat = baseLat; // Reset lat/lon k novým bázovým souřadnicím
+        lat = baseLat; 
         lon = baseLon;
         wheelRotation = 0;
         updateCoords();
