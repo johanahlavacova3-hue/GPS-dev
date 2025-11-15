@@ -1,80 +1,188 @@
-body {
+/* --- Základní nastavení --- */
+* {
+  box-sizing: border-box; /* Zajišťuje konzistentní velikosti */
+}
+
+html, body {
   margin: 0;
   padding: 0;
-  background: #000;
+  overflow: hidden; /* Zákaz rolování */
+  height: 100%;
+  width: 100%;
+  background: #000; /* Černé pozadí */
   color: #0f0;
   font-family: 'Courier New', monospace;
+}
+
+/* --- Hlavní rozložení (Flexbox) --- */
+.main-container {
   display: flex;
-  height: 100vh;
-  overflow: hidden;
+  width: 100%;
+  height: 100vh; /* 100% výšky okna */
+  padding: 20px;
+  gap: 20px;
 }
+
+/* --- Levá část (Nadpis + Plátno) --- */
+.canvas-area {
+  flex: 1; /* Zabere většinu místa */
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* Oprava pro flexbox overflow */
+}
+
+h1 {
+  margin: 0 0 10px 0;
+  font-size: 1.5em;
+  letter-spacing: 2px;
+  color: #0f0;
+}
+
 #canvas-container {
-  width: 1320px;
-  height: 1000px;
+  flex: 1; /* Vyplní zbytek výšky */
+  border-radius: 5px; /* Zaoblené rohy */
+  overflow: hidden; /* Oříznutí plátna */
   border: 1px solid #333;
-  overflow: hidden;
-  position: relative;
 }
+
 canvas {
   width: 100%;
   height: 100%;
-  image-rendering: pixelated; /* Změna na pixelated pro lepší zrnitost/pixely */
+  image-rendering: pixelated;
+  display: block; /* Odstranění mezery pod plátnem */
 }
+
+/* --- Pravá část (Ovládací panel) --- */
 #controls {
-  padding: 20px;
+  width: 300px; /* Pevná šířka panelu */
   display: flex;
   flex-direction: column;
   gap: 20px;
-  width: 400px;
+  padding: 20px;
   background: #111;
+  border-radius: 5px; /* Zaoblené rohy */
 }
-h1 {
-  margin: 0;
-  font-size: 2.5em;
-  text-align: center;
-  letter-spacing: 2px;
+
+.control-section {
+  border-bottom: 1px solid #333;
+  padding-bottom: 20px;
 }
+.control-section:last-child {
+  border-bottom: none;
+}
+
+h3 {
+  margin: 0 0 10px 0;
+  font-size: 1em;
+  color: #0a0;
+}
+
+/* --- Prvky v ovládacím panelu --- */
+#current-coords {
+  font-size: 1.2em;
+  color: #0f0;
+  word-wrap: break-word; /* Zalamování dlouhých souřadnic */
+}
+
 input[type="text"] {
+  width: 100%;
   background: #000;
   border: 1px solid #0f0;
   color: #0f0;
   padding: 10px;
   font-family: 'Courier New', monospace;
   font-size: 1em;
+  border-radius: 5px; /* Zaoblené rohy */
 }
-.wheel-container {
-  text-align: center;
+
+/* --- Nový Joystick (Kolečko v kolečku) --- */
+.joystick-wrapper {
+  flex: 1; /* Vyplní zbytek místa */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px; /* Minimální výška pro joystick */
 }
-.wheel {
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #0a0a0a, #000);
-  margin: 20px auto;
+
+#joystick-base {
+  width: 150px;
+  height: 150px;
+  background: #000;
+  border-radius: 50%; /* Vnější kruh */
+  border: 2px solid #0f0;
   position: relative;
-  cursor: pointer;
-  box-shadow: 0 0 20px #0f0;
-  transition: transform 0.1s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.wheel::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 20px;
-  height: 20px;
+
+#joystick-handle {
+  width: 50px;
+  height: 50px;
   background: #0f0;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
+  border-radius: 50%; /* Vnitřní kruh */
+  position: absolute;
   box-shadow: 0 0 10px #0f0;
+  cursor: pointer;
+  transition: transform 0.05s ease-out; /* Plynulý návrat */
 }
-.coords-display {
+
+/* Skrytý status (používá ho JS, ale není vidět) */
+#status-container {
+  display: none;
+}
+
+
+/* --- Responzivita a Varování pro mobily --- */
+
+/* Varování pro mobily na výšku */
+#landscape-warning {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  color: #fff;
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
   text-align: center;
   font-size: 1.2em;
-  margin-top: 10px;
+  padding: 20px;
 }
-.status {
-  text-align: center;
-  font-size: 0.9em;
-  color: #0a0;
+
+/* Zobrazit varování jen na výšku (na zařízeních s max šířkou 900px) */
+@media (max-width: 900px) and (orientation: portrait) {
+  .main-container {
+    display: none; /* Skryje aplikaci */
+  }
+  #landscape-warning {
+    display: flex; /* Zobrazí varování */
+  }
+}
+
+/* Úpravy pro tablety a úzké obrazovky na šířku */
+@media (max-width: 900px) and (orientation: landscape) {
+  .main-container {
+    padding: 10px;
+    gap: 10px;
+  }
+  #controls {
+    width: 240px; /* Užší panel */
+    padding: 15px;
+  }
+  h1 {
+    font-size: 1.2em;
+  }
+  #joystick-base {
+    width: 120px;
+    height: 120px;
+  }
+  #joystick-handle {
+    width: 40px;
+    height: 40px;
+  }
 }
