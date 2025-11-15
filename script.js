@@ -1,6 +1,3 @@
-// Kompletní JS s joystickem a ovládacími slidery.
-// DŮLEŽITÉ: označil jsem komentáře, kde upravovat blur a grain.
-
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
@@ -8,8 +5,8 @@ const input = document.getElementById('coords-input');
 const currentCoordsEl = document.getElementById('coords');
 const statusEl = document.getElementById('status');
 
-const blurSlider = document.getElementById('blur-slider');    // kontrola rozmazání
-const grainSlider = document.getElementById('grain-slider');  // kontrola zrnitosti
+const blurSlider = document.getElementById('blur-slider');
+const grainSlider = document.getElementById('grain-slider');
 const joystick = document.getElementById('joystick');
 const knob = document.getElementById('joystick-knob');
 const resetBtn = document.getElementById('reset-btn');
@@ -23,7 +20,7 @@ let baseLon = DEFAULT_LON;
 
 let GENETIC_TRAITS = {};
 
-// === Perlin (stejné jako dříve) ===
+// === Perlin ===
 class Perlin {
   constructor() {
     this.p = new Array(512);
@@ -53,7 +50,6 @@ class Perlin {
 const perlin = new Perlin();
 
 // === CoordinateGenetics ===
-// (ponecháno, jen malá kontrola výstupů)
 function CoordinateGenetics(lat, lon) {
   const traits = {};
   const latStr = String(lat.toFixed(8)).replace('.','');
@@ -90,7 +86,6 @@ function CoordinateGenetics(lat, lon) {
     traits.ColorHeat = 0;
   }
 
-  // <-- TADY můžeš nastavit základní grain (bude vynásobeno sliderem) -->
   traits.GrainIntensity = 0.6 + (N[N.length-1]/9)*0.5;
 
   for (let k=0; k<38; k++){
@@ -114,11 +109,8 @@ function generateGrainyImage(lat, lon){
   if (!ctx) return;
   GENETIC_TRAITS = CoordinateGenetics(lat, lon);
   const T = GENETIC_TRAITS;
-
-  // Nastavení velikosti (pokud bys chtěla responzivitu, doplň resize handling)
   const w = canvas.width;
   const h = canvas.height;
-
   const imgData = ctx.createImageData(w, h);
   const data = imgData.data;
 
@@ -132,21 +124,17 @@ function generateGrainyImage(lat, lon){
   const cx = w/2;
   const cy = h/2;
 
-  // pomocná hodnota z ovládacího slideru:
-  const userBlur = Number(blurSlider.value);    // --> použij tady pro blur (post-process)
-  const userGrain = Number(grainSlider.value);  // --> násobitel zrnitosti
+  const userBlur = Number(blurSlider.value);
+  const userGrain = Number(grainSlider.value);
 
   for (let y=0; y<h; y++){
     for (let x=0; x<w; x++){
       const i = (y*w + x)*4;
-
       let fx = x - cx;
       let fy = y - cy;
-
       let rx = fx*cosR - fy*sinR;
       let ry = fx*sinR + fy*cosR;
 
-      // organické varhánky
       const warp = Math.sin((fx+fy)*0.01 + T.FinalSeed*0.001)*40*T.WarpingIntensity;
       rx += warp * Math.sin(y*0.01);
       ry += warp * Math.cos(x*0.008);
@@ -173,29 +161,21 @@ function generateGrainyImage(lat, lon){
         finalN = n*0.4 + ((rx+ry)/w)*0.6;
       }
 
-      // GRAIN: základní intensity (z traits) * uživatelský slider
-      // <-- TADY můžeš upravit základní vzorec zrnitosti -->
       const grain = (Math.random()-0.5) * (T.GrainIntensity * userGrain) * 255;
       const base = finalN * 255;
-
-      // GRAYSCALE: všechny kanály stejné
       const gray = Math.max(0, Math.min(255, base + grain));
       data[i] = data[i+1] = data[i+2] = gray;
       data[i+3] = 255;
     }
   }
 
-  // raw image into temp canvas
   const off = document.createElement('canvas');
   off.width = w;
   off.height = h;
   const offCtx = off.getContext('2d');
   offCtx.putImageData(imgData, 0, 0);
 
-  // vložíme na hlavní canvas; pak provedeme blur jako post-process
   ctx.clearRect(0,0,w,h);
-  // Používáme CSS filter blur přes drawImage
-  // <-- TADY uprav pravidlo 'blur(Xpx)' změnou userBlur (slider) -->
   if (userBlur > 0) {
     ctx.filter = `blur(${userBlur}px)`;
     ctx.drawImage(off, 0, 0);
@@ -203,11 +183,8 @@ function generateGrainyImage(lat, lon){
   } else {
     ctx.drawImage(off, 0, 0);
   }
-
-  statusEl.textContent = `Tvar: ${['Default','Organický','Pavučina','Diagonální'][T.ShapeMode]} | Varhánky: ${T.WarpingIntensity.toFixed(2)}`;
 }
 
-// === parsování vstupu ===
 function parseCoords(str){
   const m = str.match(/([\d.]+)N?,\s*([\d.]+)E?/i);
   if (m) return {lat:parseFloat(m[1]), lon:parseFloat(m[2])};
@@ -219,7 +196,6 @@ function updateCoords(){
   generateGrainyImage(lat, lon);
 }
 
-// input events
 input.addEventListener('change', () =>{
   const p = parseCoords(input.value);
   if (p){
@@ -233,11 +209,9 @@ input.addEventListener('change', () =>{
   }
 });
 
-// blur/grain sliders (live update)
 blurSlider.addEventListener('input', updateCoords);
 grainSlider.addEventListener('input', updateCoords);
 
-// reset
 resetBtn.addEventListener('click', () => {
   baseLat = DEFAULT_LAT;
   baseLon = DEFAULT_LON;
@@ -247,76 +221,52 @@ resetBtn.addEventListener('click', () => {
   updateCoords();
 });
 
-// === JOYSTICK IMPLEMENTACE ===
-// joystick range -> přibližně +/- 10 metrů podle posunutí štětce
-const JOY_MAX_PX = 40;    // max vzdálenost knoflíku od středu (px)
-const JOY_MAX_METERS = 10; // odpovídá +-10 m
-
+// === JOYSTICK ===
+const JOY_MAX_PX = 40;
+const JOY_MAX_METERS = 10;
 let dragging = false;
-
-function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
-
-function startDrag(e){
-  dragging = true;
-  knob.setPointerCapture(e.pointerId);
-}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function startDrag(e){dragging=true; knob.setPointerCapture(e.pointerId);}
 function stopDrag(e){
-  dragging = false;
-  // vratit knob do středu (pružinový návrat)
-  knob.style.transition = 'transform 200ms cubic-bezier(.2,.8,.2,1)';
-  knob.style.transform = `translate(0px,0px)`;
-  // vrátíme GPS k base (tj. uvolnění joysticku vrátí na base)
-  lat = baseLat;
-  lon = baseLon;
-  updateCoords();
-  setTimeout(()=> knob.style.transition = '', 250);
+  dragging=false;
+  knob.style.transition='transform 200ms cubic-bezier(.2,.8,.2,1)';
+  knob.style.transform=`translate(0px,0px)`;
+  lat = baseLat; lon = baseLon; updateCoords();
+  setTimeout(()=> knob.style.transition='',250);
 }
 function moveDrag(e){
-  if (!dragging) return;
-  // získat pozici relativně k joysticku
+  if(!dragging) return;
   const rect = joystick.getBoundingClientRect();
   const cx = rect.left + rect.width/2;
   const cy = rect.top + rect.height/2;
   const dx = e.clientX - cx;
   const dy = e.clientY - cy;
-  // ořezáno do kruhu JOY_MAX_PX
-  const dist = Math.sqrt(dx*dx + dy*dy);
-  const scale = dist > JOY_MAX_PX ? JOY_MAX_PX / dist : 1;
-  const mx = dx * scale;
-  const my = dy * scale;
-  knob.style.transform = `translate(${mx}px, ${my}px)`;
+  const dist = Math.sqrt(dx*dx+dy*dy);
+  const scale = dist>JOY_MAX_PX? JOY_MAX_PX/dist:1;
+  const mx = dx*scale;
+  const my = dy*scale;
+  knob.style.transform=`translate(${mx}px,${my}px)`;
 
-  // přepočet na metry: osa Y (negativní = nahoru = větší lat)
-  const metersY = - (my / JOY_MAX_PX) * JOY_MAX_METERS;
-  const metersX = (mx / JOY_MAX_PX) * JOY_MAX_METERS;
-
-  // převod metrů na stupně
-  const LAT_DEGREE_METER = 111132; // approx meters per lat degree
-  const LON_DEGREE_METER = 111132 * Math.cos(baseLat * (Math.PI / 180));
-
-  const latDelta = metersY / LAT_DEGREE_METER;
-  const lonDelta = metersX / LON_DEGREE_METER;
-
-  lat = parseFloat((baseLat + latDelta).toFixed(7));
-  lon = parseFloat((baseLon + lonDelta).toFixed(7));
-
+  const metersY = -(my/JOY_MAX_PX)*JOY_MAX_METERS;
+  const metersX = (mx/JOY_MAX_PX)*JOY_MAX_METERS;
+  const LAT_DEGREE_METER = 111132;
+  const LON_DEGREE_METER = 111132 * Math.cos(baseLat*Math.PI/180);
+  lat = parseFloat((baseLat+metersY/LAT_DEGREE_METER).toFixed(7));
+  lon = parseFloat((baseLon+metersX/LON_DEGREE_METER).toFixed(7));
   updateCoords();
 }
 
-// pointer events (fungují i na dotykových zařízeních)
-knob.addEventListener('pointerdown', (e) => { startDrag(e); });
-knob.addEventListener('pointermove', (e) => { moveDrag(e); });
-knob.addEventListener('pointerup', (e) => { stopDrag(e); });
-knob.addEventListener('pointercancel', (e) => { stopDrag(e); });
-knob.addEventListener('lostpointercapture', (e) => { stopDrag(e); });
+knob.addEventListener('pointerdown',startDrag);
+knob.addEventListener('pointermove',moveDrag);
+knob.addEventListener('pointerup',stopDrag);
+knob.addEventListener('pointercancel',stopDrag);
+knob.addEventListener('lostpointercapture',stopDrag);
 
-// také povolit kliknutí/tažení na celé oblasti joysticku
-joystick.addEventListener('pointerdown', (e) => { startDrag(e); moveDrag(e); });
-joystick.addEventListener('pointermove', (e) => { moveDrag(e); });
-joystick.addEventListener('pointerup', (e) => { stopDrag(e); });
+joystick.addEventListener('pointerdown', (e)=>{startDrag(e); moveDrag(e);});
+joystick.addEventListener('pointermove', moveDrag);
+joystick.addEventListener('pointerup', stopDrag);
 
-// initial
-document.addEventListener('DOMContentLoaded', () => {
-  input.value = `${baseLat.toFixed(7)}N, ${baseLon.toFixed(7)}E`;
+document.addEventListener('DOMContentLoaded',()=>{
+  input.value=`${baseLat.toFixed(7)}N, ${baseLon.toFixed(7)}E`;
   updateCoords();
 });
