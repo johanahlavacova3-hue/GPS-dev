@@ -1,9 +1,14 @@
+// --- VÝBĚR PRVKŮ ---
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const input = document.getElementById('coords-input');
 const currentCoordsEl = document.getElementById('current-coords');
 const statusEl = document.getElementById('status');
-const wheel = document.getElementById('wheel');
+
+// Nové prvky pro Joystick
+const joystickBase = document.getElementById('joystick-base');
+const joystickHandle = document.getElementById('joystick-handle');
+
 
 // --- KONSTANTY A ZÁKLADNÍ PROMĚNNÉ ---
 const DEFAULT_LAT = 50.0561814;
@@ -12,7 +17,6 @@ let lat = DEFAULT_LAT;
 let lon = DEFAULT_LON;
 let baseLat = DEFAULT_LAT;
 let baseLon = DEFAULT_LON;
-let wheelRotation = 0;
 
 let GENETIC_TRAITS = {};
 
@@ -30,32 +34,23 @@ class Perlin {
           84,204,176,115,121,50,45,127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180];
         for (let i = 0; i < 256; i++) this.p[i] = this.p[i + 256] = this.permutation[i];
     }
-
     noise(x, y) {
-        const X = Math.floor(x) & 255;
-        const Y = Math.floor(y) & 255;
-        x -= Math.floor(x);
-        y -= Math.floor(y);
-        const u = this.fade(x);
-        const v = this.fade(y);
-        const a = this.p[X] + Y;
-        const b = this.p[X + 1] + Y;
+        const X = Math.floor(x) & 255; const Y = Math.floor(y) & 255;
+        x -= Math.floor(x); y -= Math.floor(y);
+        const u = this.fade(x); const v = this.fade(y);
+        const a = this.p[X] + Y; const b = this.p[X + 1] + Y;
         return this.lerp(v, this.lerp(u, this.grad(this.p[a], x, y), this.grad(this.p[b], x - 1, y)),
                         this.lerp(u, this.grad(this.p[a + 1], x, y - 1), this.grad(this.p[b + 1], x - 1, y - 1)));
     }
-
     fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
     lerp(t, a, b) { return a + t * (b - a); }
     grad(hash, x, y) {
-        const h = hash & 15;
-        const u = h < 8 ? x : y;
+        const h = hash & 15; const u = h < 8 ? x : y;
         const v = h < 4 ? y : h === 12 || h === 14 ? x : 0;
         return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
     }
 }
-
 const perlin = new Perlin();
-
 
 // --- FUNKCE: GENETIKA SOUŘADNIC (CoordinateGenetics) ---
 function CoordinateGenetics(lat, lon) {
@@ -69,29 +64,20 @@ function CoordinateGenetics(lat, lon) {
     // 1. CHAOTICKÝ ZÁKLAD
     const lat10k = lat * 10000;
     const lon10k = lon * 10000;
-    
-    // VLASTNOST 1-3: Hlavní chaotický Seed (pro extrémní změnu)
     traits.Seed_A = Math.tan(lat10k % 100) * 1234;
     traits.Seed_B = Math.tan(lon10k % 100) * 5678;
     traits.FinalSeed = (traits.Seed_A * traits.Seed_B) / 1000;
-
-    // VLASTNOST 4-7: Offsety a Měřítko (Scale)
     traits.OffsetX = Math.pow(lat10k, 2) * 0.00001;
     traits.OffsetY = Math.pow(lon10k, 2) * 0.00001;
-    // Měřítko sníženo pro větší 'zoom' a organičtější vzhled
     traits.ScaleX = 0.0015 + (Math.sin(traits.FinalSeed * 0.0001) * 0.001);
     traits.ScaleY = 0.0015 + (Math.cos(traits.FinalSeed * 0.0001) * 0.001);
 
     // 2. PRAVIDLA ZÁVISLÁ NA ČÍSLICÍCH
     const fifthDigitLat = L[4] || 0;
     traits.ShapeMode = 0; 
-    if (fifthDigitLat === 0) {
-        traits.ShapeMode = 3; 
-    } else if (fifthDigitLat < 5) {
-        traits.ShapeMode = 1; 
-    } else {
-        traits.ShapeMode = 2; 
-    }
+    if (fifthDigitLat === 0) { traits.ShapeMode = 3; } 
+    else if (fifthDigitLat < 5) { traits.ShapeMode = 1; } 
+    else { traits.ShapeMode = 2; }
 
     const lastFourLon = N.slice(-4);
     const sumLastFour = lastFourLon.reduce((a, b) => a + b, 0);
@@ -107,10 +93,8 @@ function CoordinateGenetics(lat, lon) {
         traits.ColorHeat = 0; 
     }
     
-    // VLASTNOST 12: Náhodnost zrnitosti ZVÝŠENA
     traits.GrainIntensity = 0.7 + (N[N.length - 1] / 9 * 0.3);
 
-    // VLASTNOST 13-50: Vytvoření dalších 38 proměnných
     for (let k = 0; k < 38; k++) {
         const i = k % Digits.length;
         const d_i = Digits[i] || 1;
@@ -118,17 +102,15 @@ function CoordinateGenetics(lat, lon) {
         traits[`C${k}_Shift`] = Math.sin(lat10k * d_i + lon10k * k) * 40; 
     }
     
-    // VLASTNOST 51: Počet oktáv
     const sumFirstFourLat = L.slice(0, 4).reduce((a, b) => a + b, 0);
-    traits.Octaves = 5 + Math.min(2, Math.floor(sumFirstFourLat / 8)); // Více nízkofrekvenčních složek
-    traits.LowFreqWeight = 1.0 + Math.sin(lat * 10) * 0.5; // Zesílení nízkých frekvencí
+    traits.Octaves = 5 + Math.min(2, Math.floor(sumFirstFourLat / 8));
+    traits.LowFreqWeight = 1.0 + Math.sin(lat * 10) * 0.5; 
 
     return traits;
 }
 
 
 // --- FUNKCE PRO VYKRESLOVÁNÍ OBRAZU (generateGrainyImage) ---
-
 function generateGrainyImage(lat, lon) {
     GENETIC_TRAITS = CoordinateGenetics(lat, lon);
     const T = GENETIC_TRAITS;
@@ -152,89 +134,67 @@ function generateGrainyImage(lat, lon) {
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const i = (y * width + x) * 4;
-
-            // A. Rotace a Varhánky (Warping)
             let fx = x - centerX;
             let fy = y - centerY;
-            
             let rotatedX = fx * cosR - fy * sinR;
             let rotatedY = fx * sinR + fy * cosR;
-
             const warpX = Math.sin(fy * 0.02) * 20 * T.WarpingIntensity;
             const warpY = Math.cos(fx * 0.02) * 20 * T.WarpingIntensity;
-            
             rotatedX += warpX;
             rotatedY += warpY;
             
-            // B. Perlinův šum s Genetickými vlastnostmi
             const nx = (rotatedX * T.ScaleX * T.F1_Mod) + noiseOffsetX;
             const ny = (rotatedY * T.ScaleY * T.F1_Mod) + noiseOffsetY;
             
             let n = 0;
-            let amplitude = T.LowFreqWeight; // Začínáme s vyšší amplitudou pro nízké frekvence
+            let amplitude = T.LowFreqWeight; 
             let frequency = 1;
             
-            // Víceoktávový šum
             for (let oct = 0; oct < T.Octaves; oct++) {
-                // Potlačení vysokých frekvencí (amplitude *= 0.7 místo 0.5) pro menší detaily
                 n += perlin.noise(nx * frequency, ny * frequency + baseSeed) * amplitude;
                 amplitude *= 0.7; 
                 frequency *= 2;
             }
-            
-            // Protilehlá oktáva pro hloubku a organický stín
-            n += perlin.noise(nx * 0.1 * T.LowFreqWeight, ny * 0.1 * T.LowFreqWeight) * -0.6; // Silnější negativní vliv
+            n += perlin.noise(nx * 0.1 * T.LowFreqWeight, ny * 0.1 * T.LowFreqWeight) * -0.6;
+            n = (n + 1) / 2; 
 
-            n = (n + 1) / 2; // Normalizace 0..1
-
-            // C. Speciální Filtry pro Tvar (ShapeMode)
             let finalN = n;
-            
-            if (T.ShapeMode === 1) { // Organický tvar uprostřed (měkký přechod)
+            if (T.ShapeMode === 1) { 
                 const dist = Math.sqrt(fx * fx + fy * fy) / width;
-                finalN = n * (1 - Math.pow(dist, 0.5) * 0.7); // Měkká Gaussova křivka
-            } else if (T.ShapeMode === 2) { // Pavučina (Převedeno na měkký přechod místo ostrého)
-                 // Vytvoření "měkkých linek" - nespouštíme ostrý filtr, ale zesilujeme kontrast plynule
-                 finalN = Math.pow(n, 1.5); // Nelineární zvýšení kontrastu
-            } else if (T.ShapeMode === 3) { // Diagonální
-                 // Mírný, plynulý diagonální posun
+                finalN = n * (1 - Math.pow(dist, 0.5) * 0.7); 
+            } else if (T.ShapeMode === 2) { 
+                 finalN = Math.pow(n, 1.5); 
+            } else if (T.ShapeMode === 3) { 
                  finalN = n * 0.7 + Math.sin((rotatedX + rotatedY) / width * Math.PI) * 0.3;
             }
             
-            // D. Vykreslování pixelu
             const grain = (Math.random() - 0.5) * T.GrainIntensity * 255;
             const base_value = finalN * 255;
             
             let r, g, b;
-            
-            // Vylepšené barevné schéma pro plynulý fade
             const colorShiftX = Math.sin(x / 100 + T.C1_Shift * 0.01) * 70;
             const colorShiftY = Math.cos(y / 100 + T.C2_Shift * 0.01) * 70;
 
-            if (T.ColorHeat === 1) { // Teplý k sobě (Červená-Žlutá)
-                 // Měkké míchání barev (menší násobení)
+            if (T.ColorHeat === 1) { 
                  r = Math.floor(Math.max(0, Math.min(255, base_value + grain + colorShiftX * 0.6)));
                  g = Math.floor(Math.max(0, Math.min(255, base_value * 0.8 + grain * 0.6 + colorShiftY * 0.4)));
                  b = Math.floor(Math.max(0, Math.min(255, base_value * 0.4 + grain * 0.4)));
-            } else { // Studený/Mono (Modrá-Zelená)
+            } else { 
                  r = Math.floor(Math.max(0, Math.min(255, base_value * 0.4 + grain * 0.5)));
                  g = Math.floor(Math.max(0, Math.min(255, base_value + grain * 0.8 + colorShiftY * 0.6)));
                  b = Math.floor(Math.max(0, Math.min(255, base_value * 1.1 + grain * 1.2 - colorShiftX * 0.4)));
             }
             
-            data[i] = r;
-            data[i+1] = g;
-            data[i+2] = b;
-            data[i+3] = 255;
+            data[i] = r; data[i+1] = g; data[i+2] = b; data[i+3] = 255;
         }
     }
-
     ctx.putImageData(imgData, 0, 0);
+    // Aktualizace statusu (nyní skrytého) o aplikovaných pravidlech
     statusEl.textContent = `Tvar: ${['Default','Organický','Fade','Diagonální'][T.ShapeMode]}, Rotace: ${T.RotationFactor.toFixed(2)}°, Varhánky: ${T.WarpingIntensity.toFixed(1)}, Grain: ${T.GrainIntensity.toFixed(2)}`;
 }
 
 
-// --- OBSLUHA VSTUPU A KOLA (Zůstává beze změny) ---
+// --- OBSLUHA VSTUPU A NOVÉHO JOYSTICKU ---
 
 function parseCoords(str) {
     const match = str.match(/([\d.]+)N?,\s*([\d.]+)E?/i);
@@ -244,70 +204,122 @@ function parseCoords(str) {
     return null;
 }
 
-function updateCoords() {
-    currentCoordsEl.textContent = `${lat.toFixed(7)}N, ${lon.toFixed(7)}E`;
-    generateGrainyImage(lat, lon);
-    wheel.style.transform = `rotate(${wheelRotation * (180 / Math.PI)}deg)`;
+// Funkce pro aktualizaci textu a obrázku
+function updateGpsAndGenerate(newLat, newLon) {
+    lat = newLat;
+    lon = newLon;
+    currentCoordsEl.textContent = `${lat.toFixed(7)}N, ${lon.toFixed(7)}E`;
+    generateGrainyImage(lat, lon);
 }
 
+// Vstupní pole
 input.addEventListener('input', () => {
     const parsed = parseCoords(input.value);
     if (parsed) {
+        // Reset základní pozice
         baseLat = parsed.lat;
         baseLon = parsed.lon;
-        lat = baseLat; 
-        lon = baseLon;
-        wheelRotation = 0;
-        updateCoords();
+        // Reset joysticku
+        joystickHandle.style.transform = 'translate(0, 0)';
+        updateGpsAndGenerate(baseLat, baseLon);
+        statusEl.textContent = "Souřadnice načteny a resetovány";
     } else {
         statusEl.textContent = "Neplatný formát (použij: 50.123N, 13.456E)";
     }
 });
 
-// Wheel rotation
+// --- Logika pro Joystick (nahrazuje starou logiku kolečka) ---
 let isDragging = false;
-let startAngle = 0;
-let startRotation = 0;
 
-wheel.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    isDragging = true;
-    const rect = wheel.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
-    startRotation = wheelRotation;
-    document.body.style.userSelect = 'none';
-});
+// Výpočet posunu v metrech na stupeň
+function getMetersPerDegree(lat) {
+    const LAT_DEGREE_METER = 111132;
+    const LON_DEGREE_METER = 111132 * Math.cos(lat * (Math.PI / 180));
+    return { lat: LAT_DEGREE_METER, lon: LON_DEGREE_METER };
+}
 
-document.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    const rect = wheel.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
-    const delta = angle - startAngle;
-    wheelRotation = startRotation + delta;
+// Funkce pro zpracování začátku tažení (myš i dotyk)
+function startDrag(e) {
+    e.preventDefault();
+    isDragging = true;
+    document.body.style.userSelect = 'none';
+}
 
-    const meters = (wheelRotation / (Math.PI * 2)) * 20;
-    const LAT_DEGREE_METER = 111132;
-    const LON_DEGREE_METER = 111132 * Math.cos(baseLat * (Math.PI / 180));
-    
-    const latDelta = (meters * 0.8) / LAT_DEGREE_METER; 
-    const lonDelta = (meters * 0.2) / LON_DEGREE_METER;
+// Funkce pro zpracování pohybu (myš i dotyk)
+function handleMove(clientX, clientY) {
+    if (!isDragging) return;
 
-    lat = parseFloat((baseLat + latDelta).toFixed(7));
-    lon = parseFloat((baseLon + lonDelta).toFixed(7));
-    
-    updateCoords();
-});
+    const baseRect = joystickBase.getBoundingClientRect();
+    const handleRect = joystickHandle.getBoundingClientRect();
+    
+    // Střed základny
+    const centerX = baseRect.left + baseRect.width / 2;
+    const centerY = baseRect.top + baseRect.height / 2;
+    
+    // Posun od středu
+    let deltaX = clientX - centerX;
+    let deltaY = clientY - centerY;
+    
+    // Maximální vzdálenost, kam může handle
+    const maxDist = (baseRect.width / 2) - (handleRect.width / 2);
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    
+    // Omezení pohybu uvnitř základny
+    if (distance > maxDist) {
+        deltaX = (deltaX / distance) * maxDist;
+        deltaY = (deltaY / distance) * maxDist;
+    }
+    
+    // Vizuální posun "kolečka"
+    joystickHandle.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
 
-document.addEventListener('mouseup', () => {
-    isDragging = false;
-    document.body.style.userSelect = '';
-});
+    // --- Výpočet GPS posunu (±10m) ---
+    const normX = deltaX / maxDist; // -1 až 1
+    const normY = deltaY / maxDist; // -1 až 1 (nahoře -1, dole 1)
+
+    const metersLon = normX * 10; // Posun X = Lon (až 10m)
+    const metersLat = -normY * 10; // Posun Y = Lat (až 10m, osa Y je invertovaná)
+
+    const meters = getMetersPerDegree(baseLat);
+    
+    const latDelta = metersLat / meters.lat; 
+    const lonDelta = metersLon / meters.lon;
+
+    const newLat = parseFloat((baseLat + latDelta).toFixed(7));
+    const newLon = parseFloat((baseLon + lonDelta).toFixed(7));
+    
+    // Aktualizace souřadnic A OBRAZU
+    updateGpsAndGenerate(newLat, newLon);
+}
+
+// Funkce pro ukončení tažení
+function endDrag() {
+    if (!isDragging) return;
+    isDragging = false;
+    document.body.style.userSelect = '';
+    
+    // Vrátí handle do středu
+    joystickHandle.style.transform = 'translate(0, 0)';
+    
+    // Nastaví aktuální "jemně vyladěnou" pozici jako novou základní pozici
+    baseLat = lat;
+    baseLon = lon;
+}
+
+// Event Listenery pro MYŠ
+joystickHandle.addEventListener('mousedown', startDrag);
+document.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
+document.addEventListener('mouseup', endDrag);
+
+// Event Listenery pro DOTYK (pro mobily)
+joystickHandle.addEventListener('touchstart', (e) => startDrag(e.touches[0]));
+document.addEventListener('touchmove', (e) => {
+    if (isDragging) e.preventDefault(); // Zabrání rolování stránky
+    handleMove(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+document.addEventListener('touchend', endDrag);
 
 // Inicializace po načtení DOM
 document.addEventListener('DOMContentLoaded', () => {
-    updateCoords();
+    updateGpsAndGenerate(baseLat, baseLon);
 });
