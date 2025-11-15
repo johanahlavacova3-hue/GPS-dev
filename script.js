@@ -1,41 +1,29 @@
-// --- FULLY COMMENTED & EXTENDED VERSION ---
-// Přidáno:
-// 1) Přehledné komentáře – kde se mění blur, grain, grayscale.
-// 2) Joystick pro posun GPS cca +-10 m.
-// 3) Ovládací panel přesunutý napravo.
-// 4) Zachováno tvé původní generování, jen zpřehledněné.
+// Kompletní JS s joystickem a ovládacími slidery.
+// DŮLEŽITÉ: označil jsem komentáře, kde upravovat blur a grain.
 
-// ------------------------------------------------------
-// ZAKLADNÍ DOM PRVKY
-// ------------------------------------------------------
 const canvas = document.getElementById('canvas');
-const ctx = canvas?.getContext('2d');
+const ctx = canvas.getContext('2d');
+
 const input = document.getElementById('coords-input');
 const currentCoordsEl = document.getElementById('coords');
 const statusEl = document.getElementById('status');
-const wheel = document.getElementById('wheel');
-const joystick = document.getElementById('joystick'); // NOVÝ joystick element (HTML musí obsahovat div id="joystick")
 
-if (!canvas || !ctx) {
-  console.error('Canvas not found or context unavailable.');
-}
+const blurSlider = document.getElementById('blur-slider');    // kontrola rozmazání
+const grainSlider = document.getElementById('grain-slider');  // kontrola zrnitosti
+const joystick = document.getElementById('joystick');
+const knob = document.getElementById('joystick-knob');
+const resetBtn = document.getElementById('reset-btn');
 
-// ------------------------------------------------------
-// DEFAULT GPS SOUŘADNICE
-// ------------------------------------------------------
 const DEFAULT_LAT = 50.0561814;
 const DEFAULT_LON = 13.2822869;
 let lat = DEFAULT_LAT;
 let lon = DEFAULT_LON;
 let baseLat = DEFAULT_LAT;
 let baseLon = DEFAULT_LON;
-let wheelRotation = 0;
+
 let GENETIC_TRAITS = {};
 
-// ------------------------------------------------------
-// PERLIN NOISE
-// ------------------------------------------------------
-// Nechávám tvůj původní Perlinův generátor, jen jsem zkrátil komentáře.
+// === Perlin (stejné jako dříve) ===
 class Perlin {
   constructor() {
     this.p = new Array(512);
@@ -51,10 +39,7 @@ class Perlin {
     const v = this.fade(y);
     const a = this.p[X]+Y;
     const b = this.p[X+1]+Y;
-    return this.lerp(v,
-      this.lerp(u, this.grad(this.p[a],x,y), this.grad(this.p[b],x-1,y)),
-      this.lerp(u, this.grad(this.p[a+1],x,y-1), this.grad(this.p[b+1],x-1,y-1))
-    );
+    return this.lerp(v,this.lerp(u,this.grad(this.p[a],x,y),this.grad(this.p[b],x-1,y)),this.lerp(u,this.grad(this.p[a+1],x,y-1),this.grad(this.p[b+1],x-1,y-1)));
   }
   fade(t){ return t*t*t*(t*(t*6-15)+10); }
   lerp(t,a,b){ return a+t*(b-a); }
@@ -65,18 +50,14 @@ class Perlin {
     return ((h&1)===0 ? u : -u) + ((h&2)===0 ? v : -v);
   }
 }
-
 const perlin = new Perlin();
 
-// ------------------------------------------------------
-// GENETICKÝ GENERÁTOR TVARŮ Z GPS
-// ------------------------------------------------------
-// Komentáře ti vysvětlují základní části.
+// === CoordinateGenetics ===
+// (ponecháno, jen malá kontrola výstupů)
 function CoordinateGenetics(lat, lon) {
   const traits = {};
   const latStr = String(lat.toFixed(8)).replace('.','');
   const lonStr = String(lon.toFixed(8)).replace('.','');
-
   const L = latStr.split('').map(Number);
   const N = lonStr.split('').map(Number);
   const Digits = L.concat(N);
@@ -88,10 +69,8 @@ function CoordinateGenetics(lat, lon) {
   traits.Seed_B = Math.tan(lon10k % 100) * 5678;
   traits.FinalSeed = (traits.Seed_A * traits.Seed_B) / 1000;
 
-  // Offsety určují posun šumu — mění "makro" tvar.
   traits.OffsetX = Math.pow(lat10k, 2) * 0.00001;
   traits.OffsetY = Math.pow(lon10k, 2) * 0.00001;
-
   traits.ScaleX = 0.002 + Math.sin(traits.FinalSeed * 0.0001) * 0.0025;
   traits.ScaleY = 0.002 + Math.cos(traits.FinalSeed * 0.0001) * 0.0025;
 
@@ -111,7 +90,7 @@ function CoordinateGenetics(lat, lon) {
     traits.ColorHeat = 0;
   }
 
-  // ZDE UPRAVUJEŠ MNOŽSTVÍ GRAINU !!!!
+  // <-- TADY můžeš nastavit základní grain (bude vynásobeno sliderem) -->
   traits.GrainIntensity = 0.6 + (N[N.length-1]/9)*0.5;
 
   for (let k=0; k<38; k++){
@@ -130,20 +109,18 @@ function CoordinateGenetics(lat, lon) {
   return traits;
 }
 
-// ------------------------------------------------------
-// GENEROVÁNÍ OBRAZU – HLAVNÍ FUNKCE
-// ------------------------------------------------------
+// === GENEROVÁNÍ OBRAZU ===
 function generateGrainyImage(lat, lon){
   if (!ctx) return;
-
   GENETIC_TRAITS = CoordinateGenetics(lat, lon);
   const T = GENETIC_TRAITS;
 
-  const imgData = ctx.createImageData(canvas.width, canvas.height);
-  const data = imgData.data;
-
+  // Nastavení velikosti (pokud bys chtěla responzivitu, doplň resize handling)
   const w = canvas.width;
   const h = canvas.height;
+
+  const imgData = ctx.createImageData(w, h);
+  const data = imgData.data;
 
   const noiseOffsetX = T.OffsetX*100 + T.FinalSeed/1000;
   const noiseOffsetY = T.OffsetY*100 + T.FinalSeed/1000;
@@ -155,6 +132,10 @@ function generateGrainyImage(lat, lon){
   const cx = w/2;
   const cy = h/2;
 
+  // pomocná hodnota z ovládacího slideru:
+  const userBlur = Number(blurSlider.value);    // --> použij tady pro blur (post-process)
+  const userGrain = Number(grainSlider.value);  // --> násobitel zrnitosti
+
   for (let y=0; y<h; y++){
     for (let x=0; x<w; x++){
       const i = (y*w + x)*4;
@@ -165,7 +146,7 @@ function generateGrainyImage(lat, lon){
       let rx = fx*cosR - fy*sinR;
       let ry = fx*sinR + fy*cosR;
 
-      // Warping — organická deformace
+      // organické varhánky
       const warp = Math.sin((fx+fy)*0.01 + T.FinalSeed*0.001)*40*T.WarpingIntensity;
       rx += warp * Math.sin(y*0.01);
       ry += warp * Math.cos(x*0.008);
@@ -174,71 +155,168 @@ function generateGrainyImage(lat, lon){
       const ny = (ry*T.ScaleY*T.F1_Mod) + noiseOffsetY;
 
       let n = 0, amp=1, freq=1;
-
       for (let o=0; o<T.Octaves; o++){
         n += perlin.noise(nx*freq, ny*freq + baseSeed)*amp;
         amp *= 0.55;
         freq *= 2;
       }
-
-      // Další hladká vrstva
       n += perlin.noise(nx*0.05, ny*0.05)*-0.3;
-
       n = (n+1)/2;
 
       let finalN = n;
-
       if (T.ShapeMode===1){
         const d = Math.sqrt(fx*fx+fy*fy)/w;
         finalN = n*(1-d*0.7) + d*0.4;
-      }
-      else if (T.ShapeMode===2){
+      } else if (T.ShapeMode===2){
         finalN = Math.sin(n*20) > 0.2 ? 1 : 0;
-      }
-      else if (T.ShapeMode===3){
+      } else if (T.ShapeMode===3){
         finalN = n*0.4 + ((rx+ry)/w)*0.6;
       }
 
-      // TADY MĚNÍŠ MÍRU GRAINU !!!!
-      const grain = (Math.random()-0.5)*T.GrainIntensity*255;
-      const base = finalN*255;
+      // GRAIN: základní intensity (z traits) * uživatelský slider
+      // <-- TADY můžeš upravit základní vzorec zrnitosti -->
+      const grain = (Math.random()-0.5) * (T.GrainIntensity * userGrain) * 255;
+      const base = finalN * 255;
 
-      // Přechody teď ignorujeme, protože děláme grayscale
+      // GRAYSCALE: všechny kanály stejné
       const gray = Math.max(0, Math.min(255, base + grain));
-
-      data[i]   = gray;
-      data[i+1] = gray;
-      data[i+2] = gray;
+      data[i] = data[i+1] = data[i+2] = gray;
       data[i+3] = 255;
     }
   }
 
-  ctx.putImageData(imgData,0,0);
+  // raw image into temp canvas
+  const off = document.createElement('canvas');
+  off.width = w;
+  off.height = h;
+  const offCtx = off.getContext('2d');
+  offCtx.putImageData(imgData, 0, 0);
 
-  // ------------------------------------------------------
-  // POST‑PROCESSING BLUR — TADY UPRAVUJEŠ ROZMAZÁNÍ !!!!!
-  // ------------------------------------------------------
-  try {
-    const off = document.createElement('canvas');
-    off.width = canvas.width;
-    off.height = canvas.height;
-    const offCtx = off.getContext('2d');
-    offCtx.putImageData(imgData, 0, 0);
-
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    // ZMĚŇ blur(6px) NA VÍCE / MÉNĚ
-    ctx.filter = 'blur(6px)';
-    ctx.drawImage(off,0,0);
+  // vložíme na hlavní canvas; pak provedeme blur jako post-process
+  ctx.clearRect(0,0,w,h);
+  // Používáme CSS filter blur přes drawImage
+  // <-- TADY uprav pravidlo 'blur(Xpx)' změnou userBlur (slider) -->
+  if (userBlur > 0) {
+    ctx.filter = `blur(${userBlur}px)`;
+    ctx.drawImage(off, 0, 0);
     ctx.filter = 'none';
-  } catch(e) {
-    console.warn('Blur not supported', e);
+  } else {
+    ctx.drawImage(off, 0, 0);
   }
 
-  statusEl.textContent = `Tvar: ${['Default','Organický','Pavučina','Diagonální'][T.ShapeMode]} | Rotace: ${T.RotationFactor.toFixed(2)}° | Varhánky: ${T.WarpingIntensity.toFixed(1)}`;
+  statusEl.textContent = `Tvar: ${['Default','Organický','Pavučina','Diagonální'][T.ShapeMode]} | Varhánky: ${T.WarpingIntensity.toFixed(2)}`;
 }
 
-// ------------------------------------------------------
-// PARSOVÁNÍ VSTUPU
-// ------------------------------------------------------
-function parse
+// === parsování vstupu ===
+function parseCoords(str){
+  const m = str.match(/([\d.]+)N?,\s*([\d.]+)E?/i);
+  if (m) return {lat:parseFloat(m[1]), lon:parseFloat(m[2])};
+  return null;
+}
+
+function updateCoords(){
+  currentCoordsEl.textContent = `${lat.toFixed(7)}N, ${lon.toFixed(7)}E`;
+  generateGrainyImage(lat, lon);
+}
+
+// input events
+input.addEventListener('change', () =>{
+  const p = parseCoords(input.value);
+  if (p){
+    baseLat = p.lat;
+    baseLon = p.lon;
+    lat = baseLat;
+    lon = baseLon;
+    updateCoords();
+  } else {
+    statusEl.textContent = 'Neplatný formát (použij: 50.123N, 13.456E)';
+  }
+});
+
+// blur/grain sliders (live update)
+blurSlider.addEventListener('input', updateCoords);
+grainSlider.addEventListener('input', updateCoords);
+
+// reset
+resetBtn.addEventListener('click', () => {
+  baseLat = DEFAULT_LAT;
+  baseLon = DEFAULT_LON;
+  lat = baseLat;
+  lon = baseLon;
+  input.value = `${baseLat.toFixed(7)}N, ${baseLon.toFixed(7)}E`;
+  updateCoords();
+});
+
+// === JOYSTICK IMPLEMENTACE ===
+// joystick range -> přibližně +/- 10 metrů podle posunutí štětce
+const JOY_MAX_PX = 40;    // max vzdálenost knoflíku od středu (px)
+const JOY_MAX_METERS = 10; // odpovídá +-10 m
+
+let dragging = false;
+
+function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+
+function startDrag(e){
+  dragging = true;
+  knob.setPointerCapture(e.pointerId);
+}
+function stopDrag(e){
+  dragging = false;
+  // vratit knob do středu (pružinový návrat)
+  knob.style.transition = 'transform 200ms cubic-bezier(.2,.8,.2,1)';
+  knob.style.transform = `translate(0px,0px)`;
+  // vrátíme GPS k base (tj. uvolnění joysticku vrátí na base)
+  lat = baseLat;
+  lon = baseLon;
+  updateCoords();
+  setTimeout(()=> knob.style.transition = '', 250);
+}
+function moveDrag(e){
+  if (!dragging) return;
+  // získat pozici relativně k joysticku
+  const rect = joystick.getBoundingClientRect();
+  const cx = rect.left + rect.width/2;
+  const cy = rect.top + rect.height/2;
+  const dx = e.clientX - cx;
+  const dy = e.clientY - cy;
+  // ořezáno do kruhu JOY_MAX_PX
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  const scale = dist > JOY_MAX_PX ? JOY_MAX_PX / dist : 1;
+  const mx = dx * scale;
+  const my = dy * scale;
+  knob.style.transform = `translate(${mx}px, ${my}px)`;
+
+  // přepočet na metry: osa Y (negativní = nahoru = větší lat)
+  const metersY = - (my / JOY_MAX_PX) * JOY_MAX_METERS;
+  const metersX = (mx / JOY_MAX_PX) * JOY_MAX_METERS;
+
+  // převod metrů na stupně
+  const LAT_DEGREE_METER = 111132; // approx meters per lat degree
+  const LON_DEGREE_METER = 111132 * Math.cos(baseLat * (Math.PI / 180));
+
+  const latDelta = metersY / LAT_DEGREE_METER;
+  const lonDelta = metersX / LON_DEGREE_METER;
+
+  lat = parseFloat((baseLat + latDelta).toFixed(7));
+  lon = parseFloat((baseLon + lonDelta).toFixed(7));
+
+  updateCoords();
+}
+
+// pointer events (fungují i na dotykových zařízeních)
+knob.addEventListener('pointerdown', (e) => { startDrag(e); });
+knob.addEventListener('pointermove', (e) => { moveDrag(e); });
+knob.addEventListener('pointerup', (e) => { stopDrag(e); });
+knob.addEventListener('pointercancel', (e) => { stopDrag(e); });
+knob.addEventListener('lostpointercapture', (e) => { stopDrag(e); });
+
+// také povolit kliknutí/tažení na celé oblasti joysticku
+joystick.addEventListener('pointerdown', (e) => { startDrag(e); moveDrag(e); });
+joystick.addEventListener('pointermove', (e) => { moveDrag(e); });
+joystick.addEventListener('pointerup', (e) => { stopDrag(e); });
+
+// initial
+document.addEventListener('DOMContentLoaded', () => {
+  input.value = `${baseLat.toFixed(7)}N, ${baseLon.toFixed(7)}E`;
+  updateCoords();
+});
