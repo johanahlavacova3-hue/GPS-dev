@@ -1,14 +1,14 @@
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:#000;color:#0f0;font-family:Courier,monospace;overflow:hidden}
+html,body{height:100%;background:#000;color:#ffffff;font-family:Courier,monospace;overflow:hidden}
 .crt{display:flex;justify-content:center;align-items:center;padding:20px;height:100%;}
 .screen{position:relative;width:100%;max-width:1400px;aspect-ratio:1.32;background:#000;border:8px solid #111;border-radius:12px;overflow:hidden;box-shadow:0 0 30px rgba(0,255,0,0.12), inset 0 0 80px rgba(0,0,0,0.8)}
 canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
 
 .overlay{position:absolute;inset:0;pointer-events:none;padding:30px;display:flex;flex-direction:column;justify-content:space-between;z-index:10}
-.header,.footer{background:rgba(0,0,0,0.7);padding:10px 20px;border:1px solid #0f0;display:inline-block}
+.header,.footer{background:rgba(0,0,0,0.7);padding:10px 20px;border:1px solid #000;display:inline-block}
 .header{align-self:flex-start}
 .footer{align-self:flex-end;font-size:0.9em}
-h1{font-size:2.2em;letter-spacing:4px;margin:0;text-shadow:0 0 10px #0f0}
+h1{font-size:2.2em;letter-spacing:4px;margin:0;text-shadow:0 0 10px #ffffff}
 .coords{font-size:1.1em;margin-top:8px;opacity:0.9}
 
 .scanlines{position:absolute;inset:0;background:repeating-linear-gradient(0deg, rgba(0,0,0,0.15), rgba(0,0,0,0.15) 1px, transparent 1px, transparent 2px);pointer-events:none;z-index:5;animation:scanline 8s linear infinite}
@@ -34,7 +34,7 @@ h1{font-size:2.2em;letter-spacing:4px;margin:0;text-shadow:0 0 10px #0f0}
 .ctrl-row div{font-size:0.86rem;color:#aaf}
 #coords-input{background:rgba(0,0,0,0.9);border:1px solid #0f0;color:#0f0;padding:8px;border-radius:6px;font-family:Courier,monospace}
 input[type="range"]{width:100%}
-.small{font-size:0.8rem;color:#9f9}
+.small{font-size:0.8rem;color:#ffffff}
 
 #joystick{width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03);position:relative;display:flex;align-items:center;justify-content:center;touch-action:none}
 #joystick-knob{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.04);border:2px solid rgba(255,255,255,0.06);box-shadow:inset 0 -6px 12px rgba(0,0,0,0.4);transform:translate(0,0);transition:transform 150ms cubic-bezier(.2,.8,.2,1)}
