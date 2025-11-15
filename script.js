@@ -1,6 +1,6 @@
 // --- ELEMENTS ---
 const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');  // <-- TOTO BYLO CHYBĚJÍCÍ!
+const ctx = canvas.getContext('2d');
 const coordsEl = document.getElementById('coords');
 const statusEl = document.getElementById('status');
 const input = document.getElementById('coords-input');
@@ -56,7 +56,29 @@ function createSeededRandom(seed) {
   };
 }
 
-// --- GENEROVÁNÍ ABSTRAKTNÍHO 3D GRAINY ARTU ---
+// --- HSL → RGB ---
+function hslToRgb(h, s, l) {
+  let r, g, b;
+  if (s === 0) r = g = b = l;
+  else {
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+
+// --- GENEROVÁNÍ ARTU ---
 function generateArt(lat, lon) {
   const seed = gpsToSeed(lat, lon);
   const rand = createSeededRandom(seed);
@@ -85,12 +107,10 @@ function generateArt(lat, lon) {
       let fx = (x - cx) / w * 2;
       let fy = (y - cy) / h * 2;
 
-      // Organické zkroucení
       const wx = Math.sin(fy * 8 + seed * 0.0001) * T.warp * 0.1;
       const wy = Math.cos(fx * 8 + seed * 0.0001) * T.warp * 0.1;
       fx += wx; fy += wy;
 
-      // 3D heightmap (Perlin)
       let height = 0, amp = 1, freq = 1;
       for (let o = 0; o < T.octaves; o++) {
         height += perlin.noise(fx * T.scale * freq + seed, fy * T.scale * freq + seed * 0.5) * amp;
@@ -99,66 +119,4 @@ function generateArt(lat, lon) {
       }
       height = (height + T.octaves) / (T.octaves * 2);
 
-      // Normály pro osvětlení
-      const nx = perlin.noise(fx * T.scale * freq * 2 + 100, fy * T.scale * freq * 2 + 100) * 2 - 1;
-      const ny = perlin.noise(fx * T.scale * freq * 2 + 200, fy * T.scale * freq * 2 + 200) * 2 - 1;
-      const nz = 1.0;
-      const lightDot = Math.max(0, nx * T.lightX + ny * T.lightY + nz * T.lightZ);
-      const light = lightDot * 0.7 + 0.3; // ambient
-
-      // Kombinace výšky + světlo
-      let shade = height * light * T.height + (1 - T.height) * 0.5;
-      shade = Math.pow(shade, T.contrast);
-
-      // Vinětace
-      const dist = Math.hypot(x - cx, y - cy) / (Math.min(w, h) * 0.6);
-      shade *= (1 - Math.pow(dist, 2) * T.vignette);
-
-      // Posterizace
-      const levels = 5 + Math.floor(rand() * 2);
-      shade = Math.floor(shade * levels) / levels;
-
-      // Zrnitost
-      shade += (rand() - 0.5) * T.grain * 0.45;
-      shade = Math.max(0, Math.min(1, shade));
-
-      const v = Math.floor(shade * 255);
-      data[i] = v; data[i+1] = v; data[i+2] = v; data[i+3] = 255;
-    }
-  }
-
-  ctx.putImageData(imgData, 0, 0);
-
-  // UI
-  coordsEl.textContent = `${lat.toFixed(7)}N, ${lon.toFixed(7)}E`;
-  statusEl.textContent = `3D GRAIN ART | OCT:${T.octaves} | SEED:${seed.toString(16).substring(0,6).toUpperCase()}`;
-}
-
-// --- INPUT ---
-function parseCoords(str) {
-  const match = str.match(/([\d.]+)\s*N?,?\s*([\d.]+)\s*E?/i);
-  if (match) return { lat: parseFloat(match[1]), lon: parseFloat(match[2]) };
-  return null;
-}
-
-input.addEventListener('input', () => {
-  const parsed = parseCoords(input.value.trim());
-  if (parsed && !isNaN(parsed.lat) && !isNaN(parsed.lon)) {
-    currentLat = parsed.lat;
-    currentLon = parsed.lon;
-    generateArt(currentLat, currentLon);
-    input.style.borderColor = '#0f0';
-    input.style.boxShadow = '0 0 20px rgba(0,255,0,0.6)';
-  } else {
-    input.style.borderColor = '#f55';
-    input.style.boxShadow = '0 0 20px rgba(255,0,0,0.4)';
-  }
-});
-
-// --- INIT ---
-document.addEventListener('DOMContentLoaded', () => {
-  generateArt(currentLat, currentLon);
-  input.value = `${currentLat}N, ${currentLon}E`;
-  input.focus();
-  input.select();
-});
+      const nx = perlin.noise(fx
