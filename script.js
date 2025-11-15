@@ -5,7 +5,6 @@ const input = document.getElementById('coords-input');
 const currentCoordsEl = document.getElementById('current-coords');
 const statusEl = document.getElementById('status');
 
-// Nové prvky pro Joystick
 const joystickBase = document.getElementById('joystick-base');
 const joystickHandle = document.getElementById('joystick-handle');
 
@@ -25,13 +24,13 @@ class Perlin {
     constructor() {
         this.p = new Array(512);
         this.permutation = [151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
-          190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,
-          175,74,165,71,134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,102,143,
-          54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,
-          52,217,226,250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,223,183,170,213,
-          119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,
-          246,97,228,251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,49,192,214,31,181,199,106,157,184,
-          84,204,176,115,121,50,45,127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180];
+      190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,
+      175,74,165,71,134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,102,143,
+      54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,
+      52,217,226,250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,223,183,170,213,
+      119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,
+      246,97,228,251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,49,192,214,31,181,199,106,157,184,
+      84,204,176,115,121,50,45,127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180];
         for (let i = 0; i < 256; i++) this.p[i] = this.p[i + 256] = this.permutation[i];
     }
     noise(x, y) {
@@ -52,7 +51,7 @@ class Perlin {
 }
 const perlin = new Perlin();
 
-// --- FUNKCE: GENETIKA SOUŘADNIC (CoordinateGenetics) ---
+// --- FUNKCE: GENETIKA SOUŘADNIC (Upraveno pro nostalgii a kontrast) ---
 function CoordinateGenetics(lat, lon) {
     const traits = {};
     const latStr = String(lat.toFixed(8)).replace('.', '');
@@ -77,8 +76,9 @@ function CoordinateGenetics(lat, lon) {
     traits.ShapeMode = 0; 
     if (fifthDigitLat === 0) { traits.ShapeMode = 3; } 
     else if (fifthDigitLat < 5) { traits.ShapeMode = 1; } 
-    else { traits.ShapeMode = 2; }
+    else { traits.ShapeMode = 2; } // Nyní Ostrá Pavučina
 
+    // Rotace (zůstává, dává objektu orientaci)
     const lastFourLon = N.slice(-4);
     const sumLastFour = lastFourLon.reduce((a, b) => a + b, 0);
     traits.RotationFactor = 0;
@@ -87,30 +87,34 @@ function CoordinateGenetics(lat, lon) {
         const evenRotation = N.filter(d => d % 2 === 0).reduce((a, b) => a + b, 0);
         traits.RotationFactor = evenRotation * 0.05; 
         traits.WarpingIntensity = 0.8; 
-        traits.ColorHeat = 1; 
     } else {
         traits.WarpingIntensity = 0.2; 
-        traits.ColorHeat = 0; 
     }
     
-    traits.GrainIntensity = 0.7 + (N[N.length - 1] / 9 * 0.3);
+    // Vlastnosti pro "Nostalgii"
+    traits.GrainIntensity = 0.8 + (N[N.length - 1] / 9 * 0.2); // Konstantně vysoká zrnitost
+    traits.VignetteIntensity = 0.5 + (L[0] / 9) * 0.5; // Síla vinětace (0.5 až 1.0)
+    
+    const sumDigits = L.reduce((a, b) => a + b, 0);
+    traits.PosterizationLevels = 4 + (sumDigits % 5); // 4-8 úrovní šedé
 
+    // Odstraněny barevné vlastnosti (C_Shift)
     for (let k = 0; k < 38; k++) {
         const i = k % Digits.length;
         const d_i = Digits[i] || 1;
         traits[`F${k}_Mod`] = 1 + (d_i * Math.sin(lat * k) * 0.5);
-        traits[`C${k}_Shift`] = Math.sin(lat10k * d_i + lon10k * k) * 40; 
     }
     
     const sumFirstFourLat = L.slice(0, 4).reduce((a, b) => a + b, 0);
-    traits.Octaves = 5 + Math.min(2, Math.floor(sumFirstFourLat / 8));
-    traits.LowFreqWeight = 1.0 + Math.sin(lat * 10) * 0.5; 
+    traits.Octaves = 4 + Math.min(3, Math.floor(sumFirstFourLat / 8)); // 4-7 oktáv pro detail
+    
+    // Odstraněn LowFreqWeight (to způsobovalo "mlhu")
 
     return traits;
 }
 
 
-// --- FUNKCE PRO VYKRESLOVÁNÍ OBRAZU (generateGrainyImage) ---
+// --- FUNKCE PRO VYKRESLOVÁNÍ OBRAZU (Upraveno pro Monochromatický Objekt) ---
 function generateGrainyImage(lat, lon) {
     GENETIC_TRAITS = CoordinateGenetics(lat, lon);
     const T = GENETIC_TRAITS;
@@ -147,54 +151,59 @@ function generateGrainyImage(lat, lon) {
             const ny = (rotatedY * T.ScaleY * T.F1_Mod) + noiseOffsetY;
             
             let n = 0;
-            let amplitude = T.LowFreqWeight; 
+            let amplitude = 1; // Bez LowFreqWeight, aby to nebyla mlha
             let frequency = 1;
             
+            // Více oktáv pro detail (vytváří "objekt")
             for (let oct = 0; oct < T.Octaves; oct++) {
                 n += perlin.noise(nx * frequency, ny * frequency + baseSeed) * amplitude;
-                amplitude *= 0.7; 
+                amplitude *= 0.5; // Rychlejší pokles = více detailů, méně mlhy
                 frequency *= 2;
             }
-            n += perlin.noise(nx * 0.1 * T.LowFreqWeight, ny * 0.1 * T.LowFreqWeight) * -0.6;
+            
+            // Odstraněna negativní oktáva (ta dělala mlhu)
             n = (n + 1) / 2; 
 
-            let finalN = n;
-            if (T.ShapeMode === 1) { 
+            // Aplikace kontrastu pro "objekt"
+            let contrastN = n;
+            if (T.ShapeMode === 1) { // Organický tvar uprostřed
                 const dist = Math.sqrt(fx * fx + fy * fy) / width;
-                finalN = n * (1 - Math.pow(dist, 0.5) * 0.7); 
-            } else if (T.ShapeMode === 2) { 
-                 finalN = Math.pow(n, 1.5); 
-            } else if (T.ShapeMode === 3) { 
-                 finalN = n * 0.7 + Math.sin((rotatedX + rotatedY) / width * Math.PI) * 0.3;
+                contrastN = n * (1 - Math.pow(dist, 0.5) * 0.7); 
+            } else if (T.ShapeMode === 2) { // OSTRÁ Pavučina (pro kontrast)
+                 contrastN = (Math.abs(n - 0.5) < 0.02) ? 0.0 : 1.0; // Velmi tenké, ostré linky
+            } else if (T.ShapeMode === 3) { // Diagonální
+                 contrastN = n * 0.7 + Math.sin((rotatedX + rotatedY) / width * Math.PI) * 0.3;
             }
             
-            const grain = (Math.random() - 0.5) * T.GrainIntensity * 255;
-            const base_value = finalN * 255;
+            // Aplikace "Nostalgie"
+            // 1. Vinětace
+            const v_dist = Math.sqrt(fx*fx + fy*fy) / (width * 0.7); // Těsnější vinětace
+            const vignette = 1.0 - (v_dist * T.VignetteIntensity);
+            let finalN = contrastN * vignette;
             
-            let r, g, b;
-            const colorShiftX = Math.sin(x / 100 + T.C1_Shift * 0.01) * 70;
-            const colorShiftY = Math.cos(y / 100 + T.C2_Shift * 0.01) * 70;
+            // 2. Posterizace (Nostalgický vzhled)
+            const posterStep = 255 / T.PosterizationLevels;
+            let base_value = Math.floor((finalN * 255) / posterStep) * posterStep;
 
-            if (T.ColorHeat === 1) { 
-                 r = Math.floor(Math.max(0, Math.min(255, base_value + grain + colorShiftX * 0.6)));
-                 g = Math.floor(Math.max(0, Math.min(255, base_value * 0.8 + grain * 0.6 + colorShiftY * 0.4)));
-                 b = Math.floor(Math.max(0, Math.min(255, base_value * 0.4 + grain * 0.4)));
-            } else { 
-                 r = Math.floor(Math.max(0, Math.min(255, base_value * 0.4 + grain * 0.5)));
-                 g = Math.floor(Math.max(0, Math.min(255, base_value + grain * 0.8 + colorShiftY * 0.6)));
-                 b = Math.floor(Math.max(0, Math.min(255, base_value * 1.1 + grain * 1.2 - colorShiftX * 0.4)));
-            }
+            // 3. Zrnitost
+            const grain = (Math.random() - 0.5) * T.GrainIntensity * 255;
             
-            data[i] = r; data[i+1] = g; data[i+2] = b; data[i+3] = 255;
+            // --- Finální pixel (MONOCHROMATICKÝ) ---
+            const finalValue = Math.floor(Math.max(0, Math.min(255, base_value + grain)));
+            
+            data[i] = finalValue;     // R
+            data[i+1] = finalValue;   // G
+            data[i+2] = finalValue;   // B
+            data[i+3] = 255;          // A
         }
     }
     ctx.putImageData(imgData, 0, 0);
     // Aktualizace statusu (nyní skrytého) o aplikovaných pravidlech
-    statusEl.textContent = `Tvar: ${['Default','Organický','Fade','Diagonální'][T.ShapeMode]}, Rotace: ${T.RotationFactor.toFixed(2)}°, Varhánky: ${T.WarpingIntensity.toFixed(1)}, Grain: ${T.GrainIntensity.toFixed(2)}`;
+    statusEl.textContent = `Tvar: ${['Default','Objekt','Linky','Diagonála'][T.ShapeMode]}, Úrovně: ${T.PosterizationLevels}, Vign: ${T.VignetteIntensity.toFixed(2)}`;
 }
 
 
-// --- OBSLUHA VSTUPU A NOVÉHO JOYSTICKU ---
+// --- OBSLUHA VSTUPU A JOYSTICKU (Beze změny) ---
 
 function parseCoords(str) {
     const match = str.match(/([\d.]+)N?,\s*([\d.]+)E?/i);
@@ -204,7 +213,6 @@ function parseCoords(str) {
     return null;
 }
 
-// Funkce pro aktualizaci textu a obrázku
 function updateGpsAndGenerate(newLat, newLon) {
     lat = newLat;
     lon = newLon;
@@ -212,14 +220,11 @@ function updateGpsAndGenerate(newLat, newLon) {
     generateGrainyImage(lat, lon);
 }
 
-// Vstupní pole
 input.addEventListener('input', () => {
     const parsed = parseCoords(input.value);
     if (parsed) {
-        // Reset základní pozice
         baseLat = parsed.lat;
         baseLon = parsed.lon;
-        // Reset joysticku
         joystickHandle.style.transform = 'translate(0, 0)';
         updateGpsAndGenerate(baseLat, baseLon);
         statusEl.textContent = "Souřadnice načteny a resetovány";
@@ -228,57 +233,47 @@ input.addEventListener('input', () => {
     }
 });
 
-// --- Logika pro Joystick (nahrazuje starou logiku kolečka) ---
 let isDragging = false;
 
-// Výpočet posunu v metrech na stupeň
 function getMetersPerDegree(lat) {
     const LAT_DEGREE_METER = 111132;
     const LON_DEGREE_METER = 111132 * Math.cos(lat * (Math.PI / 180));
     return { lat: LAT_DEGREE_METER, lon: LON_DEGREE_METER };
 }
 
-// Funkce pro zpracování začátku tažení (myš i dotyk)
 function startDrag(e) {
     e.preventDefault();
     isDragging = true;
     document.body.style.userSelect = 'none';
 }
 
-// Funkce pro zpracování pohybu (myš i dotyk)
 function handleMove(clientX, clientY) {
     if (!isDragging) return;
 
     const baseRect = joystickBase.getBoundingClientRect();
     const handleRect = joystickHandle.getBoundingClientRect();
     
-    // Střed základny
     const centerX = baseRect.left + baseRect.width / 2;
     const centerY = baseRect.top + baseRect.height / 2;
     
-    // Posun od středu
     let deltaX = clientX - centerX;
     let deltaY = clientY - centerY;
     
-    // Maximální vzdálenost, kam může handle
     const maxDist = (baseRect.width / 2) - (handleRect.width / 2);
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
     
-    // Omezení pohybu uvnitř základny
     if (distance > maxDist) {
         deltaX = (deltaX / distance) * maxDist;
         deltaY = (deltaY / distance) * maxDist;
     }
     
-    // Vizuální posun "kolečka"
     joystickHandle.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
 
-    // --- Výpočet GPS posunu (±10m) ---
-    const normX = deltaX / maxDist; // -1 až 1
-    const normY = deltaY / maxDist; // -1 až 1 (nahoře -1, dole 1)
+    const normX = deltaX / maxDist; 
+    const normY = deltaY / maxDist; 
 
-    const metersLon = normX * 10; // Posun X = Lon (až 10m)
-    const metersLat = -normY * 10; // Posun Y = Lat (až 10m, osa Y je invertovaná)
+    const metersLon = normX * 10; 
+    const metersLat = -normY * 10;
 
     const meters = getMetersPerDegree(baseLat);
     
@@ -288,20 +283,16 @@ function handleMove(clientX, clientY) {
     const newLat = parseFloat((baseLat + latDelta).toFixed(7));
     const newLon = parseFloat((baseLon + lonDelta).toFixed(7));
     
-    // Aktualizace souřadnic A OBRAZU
     updateGpsAndGenerate(newLat, newLon);
 }
 
-// Funkce pro ukončení tažení
 function endDrag() {
     if (!isDragging) return;
     isDragging = false;
     document.body.style.userSelect = '';
     
-    // Vrátí handle do středu
     joystickHandle.style.transform = 'translate(0, 0)';
     
-    // Nastaví aktuální "jemně vyladěnou" pozici jako novou základní pozici
     baseLat = lat;
     baseLon = lon;
 }
@@ -314,7 +305,7 @@ document.addEventListener('mouseup', endDrag);
 // Event Listenery pro DOTYK (pro mobily)
 joystickHandle.addEventListener('touchstart', (e) => startDrag(e.touches[0]));
 document.addEventListener('touchmove', (e) => {
-    if (isDragging) e.preventDefault(); // Zabrání rolování stránky
+    if (isDragging) e.preventDefault();
     handleMove(e.touches[0].clientX, e.touches[0].clientY);
 }, { passive: false });
 document.addEventListener('touchend', endDrag);
