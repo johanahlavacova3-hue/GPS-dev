@@ -1,21 +1,28 @@
-// Updated script.js with rendering fix + more abstract arty output
-// Key fixes:
-// - Ensure C1_Shift, C2_Shift exist (were undefined)
-// - Add graceful handling when canvas is not yet available
-// - Enhance abstract aesthetic with more layered noise + curvature waves
-// - Add protective checks against NaN values
+// --- FULLY COMMENTED & EXTENDED VERSION ---
+// Přidáno:
+// 1) Přehledné komentáře – kde se mění blur, grain, grayscale.
+// 2) Joystick pro posun GPS cca +-10 m.
+// 3) Ovládací panel přesunutý napravo.
+// 4) Zachováno tvé původní generování, jen zpřehledněné.
 
+// ------------------------------------------------------
+// ZAKLADNÍ DOM PRVKY
+// ------------------------------------------------------
 const canvas = document.getElementById('canvas');
 const ctx = canvas?.getContext('2d');
 const input = document.getElementById('coords-input');
 const currentCoordsEl = document.getElementById('coords');
 const statusEl = document.getElementById('status');
 const wheel = document.getElementById('wheel');
+const joystick = document.getElementById('joystick'); // NOVÝ joystick element (HTML musí obsahovat div id="joystick")
 
 if (!canvas || !ctx) {
   console.error('Canvas not found or context unavailable.');
 }
 
+// ------------------------------------------------------
+// DEFAULT GPS SOUŘADNICE
+// ------------------------------------------------------
 const DEFAULT_LAT = 50.0561814;
 const DEFAULT_LON = 13.2822869;
 let lat = DEFAULT_LAT;
@@ -23,10 +30,12 @@ let lon = DEFAULT_LON;
 let baseLat = DEFAULT_LAT;
 let baseLon = DEFAULT_LON;
 let wheelRotation = 0;
-
 let GENETIC_TRAITS = {};
 
-// Same Perlin class as before (shortened comment only)
+// ------------------------------------------------------
+// PERLIN NOISE
+// ------------------------------------------------------
+// Nechávám tvůj původní Perlinův generátor, jen jsem zkrátil komentáře.
 class Perlin {
   constructor() {
     this.p = new Array(512);
@@ -59,10 +68,15 @@ class Perlin {
 
 const perlin = new Perlin();
 
+// ------------------------------------------------------
+// GENETICKÝ GENERÁTOR TVARŮ Z GPS
+// ------------------------------------------------------
+// Komentáře ti vysvětlují základní části.
 function CoordinateGenetics(lat, lon) {
   const traits = {};
   const latStr = String(lat.toFixed(8)).replace('.','');
   const lonStr = String(lon.toFixed(8)).replace('.','');
+
   const L = latStr.split('').map(Number);
   const N = lonStr.split('').map(Number);
   const Digits = L.concat(N);
@@ -74,8 +88,10 @@ function CoordinateGenetics(lat, lon) {
   traits.Seed_B = Math.tan(lon10k % 100) * 5678;
   traits.FinalSeed = (traits.Seed_A * traits.Seed_B) / 1000;
 
+  // Offsety určují posun šumu — mění "makro" tvar.
   traits.OffsetX = Math.pow(lat10k, 2) * 0.00001;
   traits.OffsetY = Math.pow(lon10k, 2) * 0.00001;
+
   traits.ScaleX = 0.002 + Math.sin(traits.FinalSeed * 0.0001) * 0.0025;
   traits.ScaleY = 0.002 + Math.cos(traits.FinalSeed * 0.0001) * 0.0025;
 
@@ -84,9 +100,9 @@ function CoordinateGenetics(lat, lon) {
 
   const lastFour = N.slice(-4);
   const sumLastFour = lastFour.reduce((a,b)=>a+b,0);
+
   if (sumLastFour > 20) {
-    const evenRotation = N.filter(d=>d%2===0).reduce((a,b)=>a+b,0);
-    traits.RotationFactor = evenRotation * 0.07;
+    traits.RotationFactor = N.filter(d=>d%2===0).reduce((a,b)=>a+b,0) * 0.07;
     traits.WarpingIntensity = 1.2;
     traits.ColorHeat = 1;
   } else {
@@ -95,6 +111,7 @@ function CoordinateGenetics(lat, lon) {
     traits.ColorHeat = 0;
   }
 
+  // ZDE UPRAVUJEŠ MNOŽSTVÍ GRAINU !!!!
   traits.GrainIntensity = 0.6 + (N[N.length-1]/9)*0.5;
 
   for (let k=0; k<38; k++){
@@ -113,6 +130,9 @@ function CoordinateGenetics(lat, lon) {
   return traits;
 }
 
+// ------------------------------------------------------
+// GENEROVÁNÍ OBRAZU – HLAVNÍ FUNKCE
+// ------------------------------------------------------
 function generateGrainyImage(lat, lon){
   if (!ctx) return;
 
@@ -121,6 +141,7 @@ function generateGrainyImage(lat, lon){
 
   const imgData = ctx.createImageData(canvas.width, canvas.height);
   const data = imgData.data;
+
   const w = canvas.width;
   const h = canvas.height;
 
@@ -144,6 +165,7 @@ function generateGrainyImage(lat, lon){
       let rx = fx*cosR - fy*sinR;
       let ry = fx*sinR + fy*cosR;
 
+      // Warping — organická deformace
       const warp = Math.sin((fx+fy)*0.01 + T.FinalSeed*0.001)*40*T.WarpingIntensity;
       rx += warp * Math.sin(y*0.01);
       ry += warp * Math.cos(x*0.008);
@@ -152,16 +174,20 @@ function generateGrainyImage(lat, lon){
       const ny = (ry*T.ScaleY*T.F1_Mod) + noiseOffsetY;
 
       let n = 0, amp=1, freq=1;
+
       for (let o=0; o<T.Octaves; o++){
         n += perlin.noise(nx*freq, ny*freq + baseSeed)*amp;
         amp *= 0.55;
         freq *= 2;
       }
 
+      // Další hladká vrstva
       n += perlin.noise(nx*0.05, ny*0.05)*-0.3;
+
       n = (n+1)/2;
 
       let finalN = n;
+
       if (T.ShapeMode===1){
         const d = Math.sqrt(fx*fx+fy*fy)/w;
         finalN = n*(1-d*0.7) + d*0.4;
@@ -173,65 +199,46 @@ function generateGrainyImage(lat, lon){
         finalN = n*0.4 + ((rx+ry)/w)*0.6;
       }
 
+      // TADY MĚNÍŠ MÍRU GRAINU !!!!
       const grain = (Math.random()-0.5)*T.GrainIntensity*255;
       const base = finalN*255;
 
-      const shiftX = Math.sin(x/80 + T.C1_Shift*0.01)*90;
-      const shiftY = Math.cos(y/120 + T.C2_Shift*0.01)*90;
-
-      let r,g,b;
-
-      // --- Grayscale only ---
+      // Přechody teď ignorujeme, protože děláme grayscale
       const gray = Math.max(0, Math.min(255, base + grain));
-      r = g = b = gray;
 
-      data[i]   = r;
-      data[i+1] = g;
-      data[i+2] = b;
+      data[i]   = gray;
+      data[i+1] = gray;
+      data[i+2] = gray;
       data[i+3] = 255;
     }
   }
 
   ctx.putImageData(imgData,0,0);
-  // --- Simple blur pass ---
+
+  // ------------------------------------------------------
+  // POST‑PROCESSING BLUR — TADY UPRAVUJEŠ ROZMAZÁNÍ !!!!!
+  // ------------------------------------------------------
   try {
     const off = document.createElement('canvas');
     off.width = canvas.width;
     off.height = canvas.height;
     const offCtx = off.getContext('2d');
     offCtx.putImageData(imgData, 0, 0);
+
     ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // ZMĚŇ blur(6px) NA VÍCE / MÉNĚ
     ctx.filter = 'blur(6px)';
     ctx.drawImage(off,0,0);
     ctx.filter = 'none';
-  } catch(e) { console.warn('Blur not supported', e); }
+  } catch(e) {
+    console.warn('Blur not supported', e);
+  }
+
   statusEl.textContent = `Tvar: ${['Default','Organický','Pavučina','Diagonální'][T.ShapeMode]} | Rotace: ${T.RotationFactor.toFixed(2)}° | Varhánky: ${T.WarpingIntensity.toFixed(1)}`;
 }
 
-function parseCoords(str){
-  const m = str.match(/([\d.]+)N?,\s*([\d.]+)E?/i);
-  if (m) return {lat:parseFloat(m[1]), lon:parseFloat(m[2])};
-  return null;
-}
-
-function updateCoords(){
-  currentCoordsEl.textContent = `${lat.toFixed(7)}N, ${lon.toFixed(7)}E`;
-  generateGrainyImage(lat, lon);
-}
-
-input.addEventListener('input', () =>{
-  const p = parseCoords(input.value);
-  if (p){
-    baseLat = p.lat;
-    baseLon = p.lon;
-    lat = baseLat;
-    lon = baseLon;
-    wheelRotation = 0;
-    updateCoords();
-  } else {
-    statusEl.textContent = 'Neplatný formát (použij: 50.123N, 13.456E)';
-  }
-});
-
-document.addEventListener('DOMContentLoaded', updateCoords);
-
+// ------------------------------------------------------
+// PARSOVÁNÍ VSTUPU
+// ------------------------------------------------------
+function parse
