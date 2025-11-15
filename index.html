@@ -1,5 +1,4 @@
-HTML: <!DOCTYPE html>
-
+<!DOCTYPE html>
 <html lang="cs">
 <head>
   <meta charset="utf-8" />
@@ -12,55 +11,51 @@ HTML: <!DOCTYPE html>
     <div class="screen">
       <canvas id="canvas" width="1320" height="1000"></canvas>
 
-```
-  <div class="overlay">
-    <div class="header">
-      <h1>GRPW-023</h1>
-      <div class="coords" id="coords">50.0561814N, 13.2822869E</div>
+      <div class="overlay">
+        <div class="header">
+          <h1>GRPW-023</h1>
+          <div class="coords" id="coords">50.0561814N, 13.2822869E</div>
+        </div>
+        <div class="footer">
+          <span id="status">VLOŽTE LIBOVOLNOU GPS</span>
+        </div>
+      </div>
+
+      <div class="scanlines"></div>
+      <div class="glow"></div>
     </div>
-    <div class="footer">
-      <span id="status">VLOŽTE LIBOVOLNOU GPS</span>
-    </div>
-  </div>
 
-  <div class="scanlines"></div>
-  <div class="glow"></div>
-</div>
+    <aside class="controls" id="controls">
+      <label class="ctrl-row">
+        <div>GPS (lat, lon)</div>
+        <input id="coords-input" type="text" placeholder="50.0561814N, 13.2822869E"/>
+      </label>
 
-<aside class="controls" id="controls">
-  <label class="ctrl-row">
-    <div>GPS (lat, lon)</div>
-    <input id="coords-input" type="text" placeholder="50.0561814N, 13.2822869E"/>
-  </label>
+      <label class="ctrl-row">
+        <div>Blur (rozmazání)</div>
+        <input id="blur-slider" type="range" min="0" max="20" value="6"/>
+      </label>
 
-  <label class="ctrl-row">
-    <div>Blur (rozmazání)</div>
-    <input id="blur-slider" type="range" min="0" max="20" value="6"/>
-  </label>
+      <label class="ctrl-row">
+        <div>Grain (zrnitost)</div>
+        <input id="grain-slider" type="range" min="0" max="3" step="0.01" value="1"/>
+      </label>
 
-  <label class="ctrl-row">
-    <div>Grain (zrnitost)</div>
-    <input id="grain-slider" type="range" min="0" max="3" step="0.01" value="1"/>
-  </label>
+      <div class="ctrl-row">
+        <div>Joystick (posun ~±10 m)</div>
+        <div id="joystick" aria-label="joystick">
+          <div id="joystick-knob"></div>
+        </div>
+        <div class="joystick-hint">Táhni pro posun; uvolněním se vrací</div>
+      </div>
 
-  <div class="ctrl-row">
-    <div>Joystick (posun ~±10 m)</div>
-    <div id="joystick" aria-label="joystick">
-      <div id="joystick-knob"></div>
-    </div>
-    <div class="joystick-hint">Táhni pro posun; uvolněním se vrací</div>
-  </div>
+      <div class="ctrl-row small">
+        <button id="reset-btn">Reset GPS</button>
+      </div>
 
-  <div class="ctrl-row small">
-    <button id="reset-btn">Reset GPS</button>
-  </div>
-
-</aside>
-```
-
+    </aside>
   </div>
 
   <script src="script.js"></script>
-
 </body>
 </html>
