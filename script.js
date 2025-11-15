@@ -14,7 +14,7 @@ let baseLat = DEFAULT_LAT;
 let baseLon = DEFAULT_LON;
 let wheelRotation = 0;
 
-// Perlin noise class - nezměněno
+// Perlin noise class - Zůstává beze změny
 class Perlin {
   constructor() {
     this.p = new Array(512);
@@ -59,49 +59,58 @@ function generateGrainyImage(lat, lon) {
   const imgData = ctx.createImageData(canvas.width, canvas.height);
   const data = imgData.data;
 
-  // --- Vylepšená matematika pro různorodost ---
-  const latInt = Math.floor(lat * 10000);
-  const lonInt = Math.floor(lon * 10000);
-  const latFrac = lat - Math.floor(lat);
-  const lonFrac = lon - Math.floor(lon);
+  // --- RADIKÁLNĚ UPRAVENÁ MATEMATIKA pro CHAOS ---
+  // Převedeme souřadnice na desetitisíce a zbytek pro radikální rozdělení vlivu
+  const lat10k = lat * 10000;
+  const lon10k = lon * 10000;
 
-  // Komplexnější generování semínka (větší změna souřadnice = větší změna obrazu)
-  const seed = (latInt * 123) - (lonInt * 456) + (latInt * lonInt / 7);
-        
-  // Komplexnější výpočet globálního offsetu pro Perlinův šum
-  const offset_x_base = (lat * lon) * 1000;
-  const offset_y_base = (lat + lon) * (latFrac - lonFrac) * 5000;
+  // Použijeme MODULO a TANGENS pro radikální změnu SEEDU
+  // Tangens má asymptoty, což způsobí obrovské skoky ve výstupu při malém posunu vstupu.
+  const chaotic_seed_lat = Math.tan(lat10k % 100) * 10000; 
+  const chaotic_seed_lon = Math.tan(lon10k % 100) * 10000;
   
-  // Změny v desetinných částech souřadnic ovlivňují scale (měřítko/zoom/detail)
-  const scale_base = 0.005; // Nižší hodnota pro větší detaily a "zoom"
-  const scale_mod_x = 1 + (Math.sin(latFrac * 100) * 0.5);
-  const scale_mod_y = 1 + (Math.cos(lonFrac * 100) * 0.5);
+  // Semínko kombinující obě chaotické hodnoty
+  const final_seed = (chaotic_seed_lat * 1234) + (chaotic_seed_lon * 5678);
+
+  // OFSETY: Exponenciální posun pro texturu
+  // Math.pow zajistí, že desáté desetinné místo má exponenciální vliv
+  const exp_lat = Math.pow(lat10k, 2) * 0.00001; 
+  const exp_lon = Math.pow(lon10k, 2) * 0.00001; 
+
+  const offset_x_base = (exp_lat - exp_lon) * 100;
+  const offset_y_base = (exp_lat + exp_lon) * 100;
+
+  // MĚŘÍTKO: Různé měřítko pro osy (deformace)
+  const scale_base = 0.003; // ještě menší hodnota pro větší "zoom"
+  const scale_mod_x = 1 + (Math.sin(final_seed * 0.0001) * 0.8);
+  const scale_mod_y = 1 + (Math.cos(final_seed * 0.0001) * 0.8);
   
   const scaleX = scale_base * scale_mod_x;
   const scaleY = scale_base * scale_mod_y;
 
-  // Vlastnosti zrnitosti
-  const color_shift_factor = 1 + Math.abs(Math.sin(lat * 10)); // Větší rozsah pro posun barev
-  const grain_intensity = 0.4 + Math.abs(lonFrac * 0.6); // Dynamická intenzita zrnění
-  // --- Konec vylepšené matematiky ---
+  // Vlastnosti zrnitosti a barvy
+  const color_cycle = Math.sin(final_seed * 0.000005) * 100; // Velmi pomalý cyklus barev
+  const grain_intensity = 0.8 + (Math.sin(lon * 5) * 0.5); // Intenzita je nyní vyšší a dynamická
+
+  // --- Konec upravené matematiky ---
 
   for (let y = 0; y < canvas.height; y++) {
     for (let x = 0; x < canvas.width; x++) {
       const i = (y * canvas.width + x) * 4;
 
       // Dynamický vstup pro Perlinův šum
-      const nx = x * scaleX + offset_x_base + seed * 0.0001;
-      const ny = y * scaleY + offset_y_base + seed * 0.0001;
+      const nx = x * scaleX + offset_x_base + final_seed;
+      const ny = y * scaleY + offset_y_base + final_seed * 1.5;
 
-      // Oktávy Perlinova šumu pro komplexnější texturu
+      // Více oktáv pro komplexnější, organickou texturu
       let n = 0;
       let amplitude = 1;
       let frequency = 1;
       
-      for (let oct = 0; oct < 4; oct++) {
+      for (let oct = 0; oct < 6; oct++) { // Zvýšeno na 6 oktáv
         n += perlin.noise(nx * frequency, ny * frequency) * amplitude;
-        amplitude *= 0.5; // Klesající amplituda
-        frequency *= 2; // Rostoucí frekvence
+        amplitude *= 0.4; // Rychlejší útlum
+        frequency *= 2.5; // Rychlejší růst frekvence
       }
 
       n = (n + 1) / 2; // Normalizace 0..1
@@ -110,10 +119,16 @@ function generateGrainyImage(lat, lon) {
       const grain = (Math.random() - 0.5) * grain_intensity * 255;
       const base_value = n * 255;
       
-      // Dynamické barvy - barevný "grainy pixel" efekt
-      const r = Math.floor(Math.max(0, Math.min(255, base_value + grain + Math.sin(x * 0.1 + y * 0.05) * 50 * color_shift_factor)));
-      const g = Math.floor(Math.max(0, Math.min(255, base_value + grain * 0.8 + Math.sin(y * 0.1) * 50 * color_shift_factor)));
-      const b = Math.floor(Math.max(0, Math.min(255, base_value + grain * 1.2 + Math.cos(x * 0.05 + y * 0.1) * 50 * color_shift_factor)));
+      // Dynamické barvy s chaotickým posunem
+      // Používáme Math.tan(x/y) pro chaotické mapování pixelů na barvy
+      const r_chaos = Math.sin(x / 50 + color_cycle) * 70;
+      const g_chaos = Math.cos(y / 50 + color_cycle) * 70;
+      const b_chaos = Math.tan((x * y) * 0.000001) * 70;
+
+
+      const r = Math.floor(Math.max(0, Math.min(255, base_value + grain + r_chaos)));
+      const g = Math.floor(Math.max(0, Math.min(255, base_value + grain * 0.8 + g_chaos)));
+      const b = Math.floor(Math.max(0, Math.min(255, base_value + grain * 1.2 + b_chaos)));
 
 
       data[i] = r;        // Červená
@@ -125,6 +140,8 @@ function generateGrainyImage(lat, lon) {
 
   ctx.putImageData(imgData, 0, 0);
 }
+
+// Ostatní funkce (parseCoords, updateCoords, obsluha kolečka) zůstávají stejné pro interakci
 
 function parseCoords(str) {
   const match = str.match(/([\d.]+)N?,\s*([\d.]+)E?/i);
@@ -204,5 +221,5 @@ document.addEventListener('mouseup', () => {
 
 // Inicializace po načtení DOM
 document.addEventListener('DOMContentLoaded', () => {
-    updateCoords();
+    updateCoords();
 });
