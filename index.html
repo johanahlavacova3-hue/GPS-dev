@@ -1,259 +1,29 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>GPS Grainy Art</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background: #000;
-      color: #0f0;
-      font-family: 'Courier New', monospace;
-      display: flex;
-      height: 100vh;
-      overflow: hidden;
-    }
-    #canvas-container {
-      width: 1320px;
-      height: 1000px;
-      border: 1px solid #333;
-      overflow: hidden;
-      position: relative;
-    }
-    canvas {
-      width: 100%;
-      height: 100%;
-      image-rendering: pixel-perfect;
-    }
-    #controls {
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      width: 400px;
-      background: #111;
-    }
-    h1 {
-      margin: 0;
-      font-size: 2.5em;
-      text-align: center;
-      letter-spacing: 2px;
-    }
-    input[type="text"] {
-      background: #000;
-      border: 1px solid #0f0;
-      color: #0f0;
-      padding: 10px;
-      font-family: 'Courier New', monospace;
-      font-size: 1em;
-    }
-    .wheel-container {
-      text-align: center;
-    }
- syndicated
-    .wheel {
-      width: 200px;
-      height: 200px;
-      border-radius: 50%;
-      background: radial-gradient(circle, #0a0a0a, #000);
-      margin: 20px auto;
-      position: relative;
-      cursor: pointer;
-      box-shadow: 0 0 20px #0f0;
-    }
-    .wheel::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 20px;
-      height: 20px;
-      background: #0f0;
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-      box-shadow: 0 0 10px #0f0;
-    }
-    .coords-display {
-      text-align: center;
-      font-size: 1.2em;
-      margin-top: 10px;
-    }
-    .status {
-      text-align: center;
-      font-size: 0.9em;
-      color: #0a0;
-    }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GPS Grainy Art V2</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <div id="canvas-container">
-    <canvas id="canvas" width="1320" height="1000"></canvas>
-  </div>
+  <div id="canvas-container">
+    <canvas id="canvas" width="1320" height="1000"></canvas>
+  </div>
 
-  <div id="controls">
-    <h1>GRPW-023</h1>
-    
-    <input type="text" id="coords-input" placeholder="50.0561814N, 13.2822869E" />
+  <div id="controls">
+    <h1>GRPW-V2 | KÓD G-PIXELU</h1>
+    
+    <input type="text" id="coords-input" placeholder="50.0561814N, 13.2822869E" />
 
-    <div class="wheel-container">
-      <div class="wheel" id="wheel"></div>
-      <div class="coords-display" id="current-coords">50.0561814N, 13.2822869E</div>
-      <div class="status" id="status">Vložte souřadnice a otáčejte kolečkem (±10 m)</div>
-    </div>
-  </div>
+    <div class="wheel-container">
+      <div class="wheel" id="wheel"></div>
+      <div class="coords-display" id="current-coords">50.0561814N, 13.2822869E</div>
+      <div class="status" id="status">Vložte souřadnice a otáčejte kolečkem (±10 m)</div>
+    </div>
+  </div>
 
-  <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const input = document.getElementById('coords-input');
-    const currentCoordsEl = document.getElementById('current-coords');
-    const statusEl = document.getElementById('status');
-    const wheel = document.getElementById('wheel');
-
-    let lat = 50.0561814;
-    let lon = 13.2822869;
-    let wheelRotation = 0;
-
-    // Perlin noise (simplified)
-    class Perlin {
-      constructor() {
-        this.p = new Array(512);
-        this.permutation = [151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
-          190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,
-          175,74,165,71,134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,102,143,
-          54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,
-          52,217,226,250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,223,183,170,213,
-          119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,
-          246,97,228,251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,49,192,214,31,181,199,106,157,184,
-          84,204,176,115,121,50,45,127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180];
-        for (let i = 0; i < 256; i++) this.p[i] = this.p[i + 256] = this.permutation[i];
-      }
-
-      noise(x, y) {
-        const X = Math.floor(x) & 255;
-        const Y = Math.floor(y) & 255;
-        x -= Math.floor(x);
-        y -= Math.floor(y);
-        const u = this.fade(x);
-        const v = this.fade(y);
-        const a = this.p[X] + Y;
-        const b = this.p[X + 1] + Y;
-        return this.lerp(v, this.lerp(u, this.grad(this.p[a], x, y), this.grad(this.p[b], x - 1, y)),
-                            this.lerp(u, this.grad(this.p[a + 1], x, y - 1), this.grad(this.p[b + 1], x - 1, y - 1)));
-      }
-
-      fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
-      lerp(t, a, b) { return a + t * (b - a); }
-      grad(hash, x, y) {
-        const h = hash & 15;
-        const u = h < 8 ? x : y;
-        const v = h < 4 ? y : h === 12 || h === 14 ? x : 0;
-        return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
-      }
-    }
-
-    const perlin = new Perlin();
-
-    function generateGrainyImage(lat, lon) {
-      const imgData = ctx.createImageData(1320, 1000);
-      const data = imgData.data;
-
-      const seed = lat * 100000 + lon;
-      const scale = 0.02;
-
-      for (let y = 0; y < 1000; y++) {
-        for (let x = 0; x < 1320; x++) {
-          const i = (y * 1320 + x) * 4;
-
-          const nx = x * scale + seed * 10;
-          const ny = y * scale + seed * 20;
-
-          let n = perlin.noise(nx, ny);
-          n = (n + 1) / 2; // 0..1
-
-          // Grainy effect
-          const grain = Math.random() * 0.3;
-          const value = Math.floor((n + grain) * 255);
-          const clamped = Math.max(0, Math.min(255, value));
-
-          data[i] = clamped;
-          data[i+1] = clamped;
-          data[i+2] = clamped;
-          data[i+3] = 255;
-        }
-      }
-
-      ctx.putImageData(imgData, 0, 0);
-    }
-
-    function parseCoords(str) {
-      const match = str.match(/([\d.]+)N?,\s*([\d.]+)E?/i);
-      if (match) {
-        return { lat: parseFloat(match[1]), lon: parseFloat(match[2]) };
-      }
-      return null;
-    }
-
-    function updateCoords() {
-      currentCoordsEl.textContent = `${lat.toFixed(7)}N, ${lon.toFixed(7)}E`;
-      generateGrainyImage(lat, lon);
-    }
-
-    input.addEventListener('input', () => {
-      const parsed = parseCoords(input.value);
-      if (parsed) {
-        lat = parsed.lat;
-        lon = parsed.lon;
-        wheelRotation = 0;
-        updateCoords();
-        statusEl.textContent = "Souřadnice načteny";
-      } else {
-        statusEl.textContent = "Neplatný formát (použij: 50.123N, 13.456E)";
-      }
-    });
-
-    // Wheel rotation
-    let isDragging = false;
-    let startAngle = 0;
-    let startRotation = 0;
-
-    wheel.addEventListener('mousedown', (e) => {
-      isDragging = true;
-      const rect = wheel.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
-      startRotation = wheelRotation;
-    });
-
-    document.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
-      const rect = wheel.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
-      const delta = angle - startAngle;
-      wheelRotation = startRotation + delta;
-
-      // 1 full rotation = 360° = 20 meters (10m up/down)
-      const meters = (wheelRotation / (Math.PI * 2)) * 20;
-      const deltaLat = (meters / 111320); // ~111km per degree
-      lat = parseFloat((50.0561814 + deltaLat).toFixed(7));
-      lon = 13.2822869; // only latitude changes for simplicity
-
-      updateCoords();
-    });
-
-    document.addEventListener('mouseup', () => {
-      isDragging = false;
-    });
-
-    // Initialize
-    currentCoordsEl.textContent = `${lat.toFixed(7)}N, ${lon.toFixed(7)}E`;
-    generateGrainyImage(lat, lon);
-  </script>
+    <script src="script.js"></script>
 </body>
 </html>
