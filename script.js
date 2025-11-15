@@ -50,45 +50,118 @@ function CoordinateGenetics(lat,lon){
 }
 
 // === GENEROVÁNÍ MLHAVÉHO OBJEKTU UPROSTŘED ===
-function generateCentralObject(lat, lon){
-  if(!ctx) return;
-  GENETIC_TRAITS = CoordinateGenetics(lat,lon);
-  const T = GENETIC_TRAITS;
-  const w = canvas.width, h = canvas.height;
-  const imgData = ctx.createImageData(w,h);
-  const data = imgData.data;
+function generateCentralObject(lat, lon) {
+    if (!ctx) return;
+    GENETIC_TRAITS = CoordinateGenetics(lat, lon);
+    const T = GENETIC_TRAITS;
 
-  const cx=w/2, cy=h/2;
-  const radius = Math.min(w,h)*0.35;
-  const DEFORM_SCALE = Number(blurSlider.value)*0.001 + 0.03;
-  const EDGE_SOFTNESS = 0.3;
-  const GRAIN = Number(grainSlider.value);
+    const w = canvas.width;
+    const h = canvas.height;
 
-  for(let y=0;y<h;y++){
-    for(let x=0;x<w;x++){
-      const i=(y*w+x)*4;
-      const dx=x-cx, dy=y-cy;
-      const dist=Math.sqrt(dx*dx+dy*dy)/radius;
-      if(dist>1){ data[i+3]=0; continue; }
+    const img = ctx.createImageData(w, h);
+    const d = img.data;
 
-      const nx = dx*DEFORM_SCALE + T.OffsetX*100;
-      const ny = dy*DEFORM_SCALE + T.OffsetY*100;
-      let n = (perlin.noise(nx, ny + T.FinalSeed*0.001)+1)/2;
+    const cx = w / 2;
+    const cy = h / 2;
 
-      let alpha = 1 - dist;
-      alpha *= 1 - n*EDGE_SOFTNESS;
+    // Velikost tvaru
+    const BASE_RADIUS = Math.min(w, h) * 0.28;
 
-      const grain = (Math.random()-0.5)*T.GrainIntensity*255*GRAIN;
-      const base = n*255 + grain;
-      const gray = Math.max(0, Math.min(255, base));
+    // Počet kontrolních bodů ovlivňuje „bizarnost“
+    const POINT_COUNT = 140; // uprav → 80 = hladší, 200 = ultra-chaos
 
-      data[i]=data[i+1]=data[i+2]=gray;
-      data[i+3]=Math.floor(alpha*255);
+    // Hloubka deformace
+    const DEFORM = 0.55; // zvětši → víc „masa“
+    const EDGE_SOFTNESS = 0.42; // okraje, 0.2 tvrdší, 0.7 úplně rozplizlé
+    const HOLE_CHANCE = 0.12; // pravděpodobnost vzniku děr 0–1
+    const HOLE_SIZE = 0.18; // velikost děr
+
+    // Random body kolem středu → určují tvar
+    const points = [];
+    for (let i = 0; i < POINT_COUNT; i++) {
+        const ang = (Math.PI * 2 * i) / POINT_COUNT;
+
+        // náhodná vzdálenost bodu od středu
+        const r =
+            BASE_RADIUS *
+            (0.9 + Math.random() * 0.5) *
+            (1 + perlin.noise(i * 0.12, T.FinalSeed * 0.001) * DEFORM);
+
+        points.push({ x: cx + Math.cos(ang) * r, y: cy + Math.sin(ang) * r });
     }
-  }
 
-  ctx.clearRect(0,0,w,h);
-  ctx.putImageData(imgData,0,0);
+    // Funkce pro test, zda je pixel uvnitř organického tvaru
+    function isInside(px, py) {
+        let inside = false;
+
+        for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+            const xi = points[i].x,
+                yi = points[i].y;
+            const xj = points[j].x,
+                yj = points[j].y;
+
+            const intersect =
+                (yi > py) !== (yj > py) &&
+                px <
+                    ((xj - xi) * (py - yi)) / (yj - yi + 0.00001) + xi;
+
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
+
+    // Generování obrazu
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            const i = (y * w + x) * 4;
+
+            if (!isInside(x, y)) {
+                d[i + 3] = 0;
+                continue;
+            }
+
+            // vzdálenost k nejbližšímu bodu → pro rozmazání okrajů
+            let minDist = Infinity;
+            for (let p = 0; p < POINT_COUNT; p++) {
+                const dx = x - points[p].x;
+                const dy = y - points[p].y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < minDist) minDist = dist;
+            }
+
+            // rozpuštěné okraje
+            let alpha = 1 - Math.min(1, minDist / (BASE_RADIUS * EDGE_SOFTNESS));
+
+            // náhodné díry uvnitř objektu
+            if (Math.random() < HOLE_CHANCE * 0.002) {
+                alpha *= 0.1;
+            }
+
+            // grain uvnitř tvaru
+            const grain =
+                (Math.random() - 0.5) *
+                30 *
+                T.GrainIntensity;
+
+            // Perlin noise pro organickou texturu uvnitř
+            let n = perlin.noise(
+                x * 0.01 + T.OffsetX * 100,
+                y * 0.01 + T.OffsetY * 100
+            );
+            n = (n + 1) / 2;
+
+            const gray = Math.max(
+                0,
+                Math.min(255, n * 255 + grain)
+            );
+
+            d[i] = d[i + 1] = d[i + 2] = gray;
+            d[i + 3] = Math.floor(alpha * 255);
+        }
+    }
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.putImageData(img, 0, 0);
 }
 
 // === parsování GPS ===
