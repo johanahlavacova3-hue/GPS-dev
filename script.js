@@ -181,24 +181,30 @@ function generateGrainyImage(lat, lon){
 
       let r,g,b;
 
-      if (T.ColorHeat===1){
-        r = base + grain + shiftX*0.8;
-        g = base*0.8 + grain*0.5 + shiftY*0.6;
-        b = base*0.25 + grain*0.4;
-      } else {
-        r = base*0.25 + grain*0.4;
-        g = base + grain + shiftY*0.9;
-        b = base*1.3 + grain*1.4 - shiftX*0.5;
-      }
+      // --- Grayscale only ---
+      const gray = Math.max(0, Math.min(255, base + grain));
+      r = g = b = gray;
 
-      data[i]   = Math.max(0,Math.min(255,r));
-      data[i+1] = Math.max(0,Math.min(255,g));
-      data[i+2] = Math.max(0,Math.min(255,b));
+      data[i]   = r;
+      data[i+1] = g;
+      data[i+2] = b;
       data[i+3] = 255;
     }
   }
 
   ctx.putImageData(imgData,0,0);
+  // --- Simple blur pass ---
+  try {
+    const off = document.createElement('canvas');
+    off.width = canvas.width;
+    off.height = canvas.height;
+    const offCtx = off.getContext('2d');
+    offCtx.putImageData(imgData, 0, 0);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.filter = 'blur(6px)';
+    ctx.drawImage(off,0,0);
+    ctx.filter = 'none';
+  } catch(e) { console.warn('Blur not supported', e); }
   statusEl.textContent = `Tvar: ${['Default','Organický','Pavučina','Diagonální'][T.ShapeMode]} | Rotace: ${T.RotationFactor.toFixed(2)}° | Varhánky: ${T.WarpingIntensity.toFixed(1)}`;
 }
 
@@ -228,3 +234,4 @@ input.addEventListener('input', () =>{
 });
 
 document.addEventListener('DOMContentLoaded', updateCoords);
+
