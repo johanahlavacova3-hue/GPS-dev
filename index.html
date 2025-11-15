@@ -1,49 +1,35 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
-  <title>GPS Grainy Art V5</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>GRPW-023 | GPS ART</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <div class="crt">
+    <div class="screen">
+      <canvas id="canvas" width="1320" height="1000"></canvas>
+      
+      <div class="overlay">
+        <div class="header">
+          <h1>GRPW-023</h1>
+          <div class="coords" id="coords">50.0561814N, 13.2822869E</div>
+        </div>
+        <div class="footer">
+          <span id="status">VLOŽTE LIBOVOLNOU GPS</span>
+        </div>
+      </div>
 
-  <div class="main-container">
-        <div class="canvas-area">
-      <h1>GRPW-V5 | G-PIXEL</h1>
-      <div id="canvas-container">
-        <canvas id="canvas" width="1320" height="1000"></canvas>
-      </div>
-    </div>
+      <div class="scanlines"></div>
+      <div class="glow"></div>
+    </div>
+  </div>
 
-        <div id="controls">
-      <div class="control-section">
-        <h3>Aktuální souřadnice</h3>
-        <div id="current-coords">Načítání...</div>
-      </div>
-      
-      <div class="control-section">
-        <h3>Vložit GPS</h3>
-        <input type="text" id="coords-input" placeholder="50.123N, 13.456E" />
-      </div>
+  <div class="input-prompt">
+    <input type="text" id="coords-input" placeholder="50.0561814N, 13.2822869E" autofocus />
+  </div>
 
-      <div class="control-section joystick-wrapper">
-        <h3>Jemný posun (±10m)</h3>
-        <div id="joystick-base">
-          <div id="joystick-handle"></div>
-        </div>
-      </div>
-
-            <div id="status-container">
-        <div id="status"></div>
-      </div>
-    </div>
-  </div>
-
-    <div id="landscape-warning">
-    <p>PRO POKRAČOVÁNÍ OTOČTE ZAŘÍZENÍ NA ŠÍŘKU</p>
-  </div>
-
-    <script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
