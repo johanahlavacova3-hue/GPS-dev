@@ -5,11 +5,40 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>GRPW-023 | GPS ART</title>
   <link rel="stylesheet" href="style.css" />
+
+  <style>
+    /* Přidáme jen potřebné styly z původního HTML */
+    body {
+      background: #111;
+      color: #ccc;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+
+    /* Canvas styl pro organický mix (lze upravit velikost) */
+    #canvas {
+      image-rendering: auto;
+      border: 1px solid #333;
+    }
+
+    /* Obrázky schováme, jen se načítají jako zdroje */
+    img.mix-texture {
+      display: none;
+    }
+  </style>
 </head>
 <body>
   <div class="crt">
     <div class="screen">
+      <!-- Nadpis z organického mixu -->
+      <h1>Organický mix dvou PNG textur</h1>
+
       <canvas id="canvas" width="1320" height="1000"></canvas>
+
+      <!-- Skryté obrázky pro mix textur -->
+      <img id="imgA" class="mix-texture" src="img/genderA.png">
+      <img id="imgB" class="mix-texture" src="img/genderB.png">
 
       <div class="overlay">
         <div class="header">
