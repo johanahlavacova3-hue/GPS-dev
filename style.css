@@ -1,11 +1,10 @@
-/* styles.css */
-html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Roboto,Arial}
-#app{height:100vh;display:flex;flex-direction:column}
-#canvas-wrap{flex:1;position:relative;background:#111}
-canvas{display:block}
-#ui{position:absolute;right:12px;top:12px;background:rgba(255,255,255,0.06);backdrop-filter:blur(6px);border-radius:12px;padding:12px;color:#fff;min-width:220px}
-#ui h3{margin:0 0 8px 0;font-size:14px}
-#ui button, #ui input{display:block;width:100%;margin:6px 0;padding:8px;border-radius:8px;border:0;background:#222;color:#fff;cursor:pointer}
-#ui label{font-size:12px;opacity:0.9}
-#credit{position:absolute;left:12px;bottom:12px;color:#ddd;font-size:13px;background:rgba(0,0,0,0.25);padding:8px;border-radius:8px}
+body {
+    margin: 0; /* Odstraní výchozí okraje */
+    overflow: hidden; /* Zabrání posouvání stránky */
+}
 
+canvas#c {
+    display: block; /* Zajistí, že canvas vyplní prostor */
+    width: 100vw;
+    height: 100vh;
+}
