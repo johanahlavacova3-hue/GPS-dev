@@ -1,22 +1,138 @@
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:#000;color:#ffffff;font-family:Courier,monospace;overflow:hidden}
-.crt{display:flex;justify-content:center;align-items:center;padding:20px;height:100%;}
-.screen{position:relative;width:100%;max-width:1400px;aspect-ratio:1.32;background:#000;border:8px solid #111;border-radius:12px;overflow:hidden;box-shadow:0 0 30px rgba(0,255,0,0.12), inset 0 0 80px rgba(0,0,0,0.8)}
-canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+/* ===============================================
+   Reset a základní styl
+   =============================================== */
+* {
+  box-sizing: border-box; /* Zajišťuje, že padding a border se počítají do velikosti prvku */
+  margin: 0;               /* Odstraní defaultní okraje */
+  padding: 0;              /* Odstraní defaultní padding */
+}
 
-.overlay{position:absolute;inset:0;pointer-events:none;padding:30px;display:flex;flex-direction:column;justify-content:space-between;z-index:10}
-.header,.footer{background:rgba(0,0,0,0.7);padding:10px 20px;border:1px solid #000;display:inline-block}
-.header{align-self:flex-start}
-.footer{align-self:flex-end;font-size:0.9em}
-h1{font-size:2.2em;letter-spacing:4px;margin:0;text-shadow:0 0 10px #ffffff}
-.coords{font-size:1.1em;margin-top:8px;opacity:0.9}
+html, body {
+  height: 100%;                     /* Plná výška okna */
+  background: #000;                 /* Černé pozadí */
+  color: #ffffff;                   /* Text bílý */
+  font-family: 'Geist Mono';  /* Monospace písmo pro retro vzhled */
+  overflow: hidden;                 /* Zakáže scroll */
+}
 
-.scanlines{position:absolute;inset:0;background:repeating-linear-gradient(0deg, rgba(0,0,0,0.15), rgba(0,0,0,0.15) 1px, transparent 1px, transparent 2px);pointer-events:none;z-index:5;animation:scanline 8s linear infinite}
-.glow{position:absolute;top:50%;left:50%;width:300px;height:300px;background:radial-gradient(circle, rgba(0,255,0,0.06) 0%, transparent 70%);transform:translate(-50%,-50%);pointer-events:none;z-index:3;animation:pulse 3s ease-in-out infinite alternate}
-@keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(100%)}}
-@keyframes pulse{from{opacity:0.25}to{opacity:0.6}}
+/* ===============================================
+   Layout CRT obrazovky
+   =============================================== */
+.crt {
+  display: flex;                     /* Flexbox pro centrování obsahu */
+  justify-content: center;           /* Horizontální centrování */
+  align-items: center;               /* Vertikální centrování */
+  padding: 20px;
+  height: 100%;
+}
 
-.controls{
+.screen {
+  position: relative;                /* Pro overlay elementy */
+  width: 100%;
+  max-width: 1400px;                 /* Max šířka obrazovky */
+  aspect-ratio: 1.32;                /* Poměr stran obrazovky */
+  background: #000;
+  border: 8px solid #111;
+  border-radius: 12px;               /* Zaoblené rohy */
+  overflow: hidden;                  /* Skrývá přetékající obsah */
+  box-shadow: 0 0 30px rgba(0,255,0,0.12), inset 0 0 80px rgba(0,0,0,0.8); /* CRT efekt */
+}
+
+canvas {
+  display: block;                     /* Odstraní inline space */
+  width: 100%; 
+  height: 100%;
+  image-rendering: pixelated;         /* Pixel-art efekt */
+}
+
+/* ===============================================
+   Overlay (informace nad canvas)
+   =============================================== */
+.overlay {
+  position: absolute;                 /* Přesně nad canvas */
+  inset: 0;                           /* Všechny strany 0 (top,right,bottom,left) */
+  pointer-events: none;               /* Overlay neblokuje myš */
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;     /* Header nahoře, footer dole */
+  z-index: 10;
+}
+
+.header, .footer {
+  background: rgba(0,0,0,0.7);       /* Poloprůhledné pozadí */
+  padding: 10px 20px;
+  border: 1px solid #000;
+  display: inline-block;
+}
+
+.header {
+  align-self: flex-start;             /* Header vlevo nahoře */
+}
+
+.footer {
+  align-self: flex-end;               /* Footer vpravo dole */
+  font-size: 0.9em;
+}
+
+h1 {
+  font-size: 2.2em;
+  letter-spacing: 4px;                /* Větší mezery mezi písmeny */
+  margin: 0;
+  text-shadow: 0 0 10px #ffffff;      /* Glow efekt nadpisu */
+}
+
+.coords {
+  font-size: 1.1em;
+  margin-top: 8px;
+  opacity: 0.9;
+}
+
+/* ===============================================
+   CRT scanlines a glow
+   =============================================== */
+.scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0,0,0,0.15),
+    rgba(0,0,0,0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  ); /* Vodorovné scanlines */
+  pointer-events: none;
+  z-index: 5;
+  animation: scanline 8s linear infinite;
+}
+
+.glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(0,255,0,0.06) 0%, transparent 70%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 3;
+  animation: pulse 3s ease-in-out infinite alternate;
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+@keyframes pulse {
+  from { opacity: 0.25; }
+  to { opacity: 0.6; }
+}
+
+/* ===============================================
+   Controls panel (GPS, sliders, joystick)
+   =============================================== */
+.controls {
   position: absolute;
   right: 12px;
   top: 12px;
@@ -24,22 +140,83 @@ h1{font-size:2.2em;letter-spacing:4px;margin:0;text-shadow:0 0 10px #ffffff}
   background: rgba(0,0,0,0.85);
   border: 1px solid #0f0;
   padding: 14px;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   z-index: 50;
-  border-radius:8px;
+  border-radius: 8px;
 }
-.ctrl-row{display:flex;flex-direction:column;gap:6px}
-.ctrl-row div{font-size:0.86rem;color:#aaf}
-#coords-input{background:rgba(0,0,0,0.9);border:1px solid #0f0;color:#0f0;padding:8px;border-radius:6px;font-family:Courier,monospace}
-input[type="range"]{width:100%}
-.small{font-size:0.8rem;color:#ffffff}
 
-#joystick{width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03);position:relative;display:flex;align-items:center;justify-content:center;touch-action:none}
-#joystick-knob{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.04);border:2px solid rgba(255,255,255,0.06);box-shadow:inset 0 -6px 12px rgba(0,0,0,0.4);transform:translate(0,0);transition:transform 150ms cubic-bezier(.2,.8,.2,1)}
-.joystick-hint{font-size:0.75rem;color:#7f7;margin-top:6px}
+.ctrl-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
+.ctrl-row div {
+  font-size: 0.86rem;
+  color: #aaf;
+}
+
+#coords-input {
+  background: rgba(0,0,0,0.9);
+  border: 1px solid #0f0;
+  color: #0f0;
+  padding: 8px;
+  border-radius: 6px;
+  font-family: Courier, monospace;
+}
+
+input[type="range"] {
+  width: 100%;
+}
+
+.small {
+  font-size: 0.8rem;
+  color: #ffffff;
+}
+
+/* ===============================================
+   Joystick styl
+   =============================================== */
+#joystick {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.03);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+
+#joystick-knob {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+  border: 2px solid rgba(255,255,255,0.06);
+  box-shadow: inset 0 -6px 12px rgba(0,0,0,0.4);
+  transform: translate(0,0);
+  transition: transform 150ms cubic-bezier(.2,.8,.2,1);
+}
+
+.joystick-hint {
+  font-size: 0.75rem;
+  color: #7f7;
+  margin-top: 6px;
+}
+
+/* ===============================================
+   Responsive úprava pro menší obrazovky
+   =============================================== */
 @media(max-width:900px){
-  .controls{position:fixed;right:8px;top:8px;width:260px}
+  .controls {
+    position: fixed;
+    right: 8px;
+    top: 8px;
+    width: 260px;
+  }
 }
