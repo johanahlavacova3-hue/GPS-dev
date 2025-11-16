@@ -102,8 +102,11 @@ function generateCentralObject(coords) {
             if (dist < minDist) minDist = dist;
         }
         const inside = isInsidePolygon(px, py, points);
-        let field = inside ? 1 - minDist / baseRadius : 0;
-        field = Math.max(0, field);
+        const blurRadius = baseRadius * 0.3;
+        let field = 0;
+        if (inside) {
+            field = Math.min(1, minDist / blurRadius);
+        }
         // Add some noise for texture
         const noise = (Math.sin(px * 0.05) + Math.cos(py * 0.05)) * 0.1;
         field += noise;
