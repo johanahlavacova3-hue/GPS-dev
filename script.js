@@ -10,11 +10,10 @@ let baseLat = 0.5; // Základní souřadnice z GPS inputu
 let baseLon = 0.5;
 let offsetLat = 0; // Posun z joysticku
 let offsetLon = 0;
+let joystickInterval = null; // Proměnná pro ukládání intervalu plynulého posunu
 
-// Konstanta pro přepočet 5m na desetinný stupeň (přibližně)
-// 5m pro šířku (Lat) ~ 0.00004500°
+// Konstanta pro přepočet 5m na desetinný stupeň (přibližně ve střední Evropě)
 const METER_TO_DEGREE_LAT = 0.000045; 
-// 5m pro délku (Lon) ~ 0.000071° (závisí na poloze, ale pro demo OK)
 const METER_TO_DEGREE_LON = 0.000071; 
 
 
@@ -25,7 +24,7 @@ const canvas = document.querySelector('#c');
 const gpsInput = document.querySelector('#gps-input');
 const currentCoordsDisplay = document.querySelector('#current-coords');
 
-// POUZE pro inicializaci (responzivita se řeší v resize handleru)
+// Získání aktuálních rozměrů pro inicializaci
 const initialWidth = canvas.clientWidth || 1000;
 const initialHeight = canvas.clientHeight || 1000;
 
@@ -45,7 +44,7 @@ renderer.toneMappingExposure = 1.2;
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; 
 
-// ---- POST-PROCESSING ----
+// ---- POST-PROCESSING (GRAIN FILTER) ----
 const composer = new EffectComposer(renderer);
 const renderPass = new RenderPass(scene, camera);
 composer.addPass(renderPass);
@@ -70,7 +69,6 @@ function seededRandom() {
 }
 
 // ---- GENERÁTOR TVARU S VAZBOU NA GPS ----
-
 let currentShape = null; 
 
 function generateRandomShape(seedX = 0.5, seedY = 0.5) {
@@ -83,7 +81,7 @@ function generateRandomShape(seedX = 0.5, seedY = 0.5) {
     // Nastavení seedu
     seed = Math.floor((seedX + seedY) * 100000);
 
-    // Generování složité křivky
+    // Generování složité křivky (40 uzlů)
     const points = [];
     let currentPos = new THREE.Vector3(0, 0, 0);
 
@@ -102,13 +100,7 @@ function generateRandomShape(seedX = 0.5, seedY = 0.5) {
     const curve = new THREE.CatmullRomCurve3(points, true, 'catmullrom', 0.5);
 
     // Geometrie tenké propletené trubice
-    const tubeGeometry = new THREE.TubeGeometry(
-        curve, 
-        400, 
-        0.8,  
-        32,   
-        true
-    );
+    const tubeGeometry = new THREE.TubeGeometry(curve, 400, 0.8, 32, true);
 
     // Matný materiál
     const solidMaterial = new THREE.MeshStandardMaterial({
@@ -131,11 +123,11 @@ function generateRandomShape(seedX = 0.5, seedY = 0.5) {
 // ---- GPS LOGIKA: PARSE & GENERATE ----
 
 function runGeneration() {
-    // Kombinace základní GPS a offsetu z joysticku
+    // Kombinace základní GPS a offsetu
     const finalLat = baseLat + offsetLat;
     const finalLon = baseLon + offsetLon;
     
-    // Zobrazení aktuálních hodnot v UI (důležité pro vizuální feedback)
+    // Zobrazení aktuálních hodnot v UI
     currentCoordsDisplay.innerHTML = 
         `Lat: ${finalLat.toFixed(8)}<br>Lon: ${finalLon.toFixed(8)}`;
     
@@ -152,7 +144,7 @@ function parseBaseGps(value) {
         const lon = parseFloat(parts[1]);
 
         if (!isNaN(lat) && !isNaN(lon)) {
-            // Nastavujeme základní hodnoty (base) a vynulujeme offset
+            // Nastavujeme základní hodnoty a vynulujeme offset
             baseLat = lat;
             baseLon = lon;
             offsetLat = 0; 
@@ -169,30 +161,70 @@ function parseBaseGps(value) {
     runGeneration();
 }
 
-// --- LISTENERY ---
+// --- JOYSTICK LOGIKA ---
+
+// Funkce, která provádí samotný posun
+function performJoystickAction(button) {
+    const direction = button.dataset.dir; 
+    const value = parseInt(button.dataset.val);
+    
+    const stepLat = value * METER_TO_DEGREE_LAT;
+    const stepLon = value * METER_TO_DEGREE_LON;
+
+    if (direction === 'lat') {
+        offsetLat += stepLat;
+    } else if (direction === 'lon') {
+        offsetLon += stepLon;
+    }
+    
+    runGeneration();
+}
+
+// Spustí nepřetržitý posun
+function startJoystick(e) {
+    const button = e.target.closest('button');
+    if (!button) return;
+
+    if (joystickInterval) return;
+
+    // 1. Provedeme první posun ihned
+    performJoystickAction(button);
+
+    // 2. Nastavíme interval pro opakované posuny (každých 100ms)
+    joystickInterval = setInterval(() => {
+        performJoystickAction(button);
+    }, 100); 
+
+    e.preventDefault();
+}
+
+// Zastaví posun
+function stopJoystick() {
+    if (joystickInterval) {
+        clearInterval(joystickInterval);
+        joystickInterval = null;
+    }
+}
+
+const joystickContainer = document.querySelector('#joystick-container');
+
+// Listenery pro stisk myši/prstu
+joystickContainer.querySelectorAll('button').forEach(button => {
+    button.addEventListener('mousedown', startJoystick);
+    button.addEventListener('touchstart', startJoystick);
+});
+
+// Listenery pro uvolnění myši/prstu (globální)
+document.addEventListener('mouseup', stopJoystick);
+document.addEventListener('touchend', stopJoystick);
+
+// --- LISTENERY UI ---
 
 // Vstupní pole: nastavení základní GPS
 gpsInput.addEventListener('change', (e) => {
     parseBaseGps(e.target.value);
 });
 
-
-// Joystick: Inkrementální posun souřadnic
-document.querySelector('#joystick-container').addEventListener('click', (e) => {
-    const button = e.target.closest('button');
-    if (!button) return;
-
-    const direction = button.dataset.dir; // 'lat' nebo 'lon'
-    const value = parseInt(button.dataset.val); // 1 (plus) nebo -1 (minus)
-    
-    if (direction === 'lat') {
-        offsetLat += value * METER_TO_DEGREE_LAT;
-    } else if (direction === 'lon') {
-        offsetLon += value * METER_TO_DEGREE_LON;
-    }
-    
-    runGeneration();
-});
 
 // ---- ANIMAČNÍ SMYČKA ----
 
@@ -205,7 +237,7 @@ function animate() {
     }
 
     controls.update(); 
-    renderer.clear(); // Zajištění správného vykreslení
+    renderer.clear(); 
     composer.render(); 
 }
 
@@ -216,7 +248,6 @@ parseBaseGps(gpsInput.value || '0.5, 0.5');
 
 // Obsluha responzivního resize
 window.addEventListener('resize', () => {
-    // Získáváme aktuální rozměry z HTML/CSS, které jsou responzivní
     const newWidth = canvas.clientWidth;
     const newHeight = canvas.clientHeight;
 
