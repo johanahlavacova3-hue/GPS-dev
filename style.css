@@ -1,7 +1,7 @@
 body {
     margin: 0;
     overflow: hidden;
-    background-color: #8a8832;
+    background-color: #000000;
     color: #fff;
     font-family: 'Geist Mono', monospace; /* Hlavní font */
 }
@@ -20,7 +20,7 @@ canvas#c {
 #explore-label {
     position: absolute;
     top: 20px;
-    right: 20px;
+    left: 20px;
     font-size: 32px; /* 32b */
     letter-spacing: 5px;
     font-weight: 500;
@@ -30,7 +30,7 @@ canvas#c {
 #right-ui-block {
     position: absolute;
     top: 60px; /* Stejná horní pozice jako okno s meshem */
-    right: 1360px; /* 1320px (šířka okna) + 20px (odsazení) + 20px (odsazení od bloku GRPW) = cca 1360px. */
+    left: 1360px; /* 1320px (šířka okna) + 20px (odsazení) + 20px (odsazení od bloku GRPW) = cca 1360px. */
     width: 300px; /* Pevná šířka pro UI prvky */
     text-align: right;
 }
