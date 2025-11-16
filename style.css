@@ -5,7 +5,7 @@ body {
     color: #fff;
     font-family: 'Geist Mono', monospace;
     height: 100vh; /* Zajistí, že body zabere celou výšku okna */
-    display: flex; /* Použijeme flexbox pro velké obrazovky (desktop/tablet) */
+    display: flex; /* Použijeme flexbox pro velké obrazovky */
 }
 
 /* ------------------------------------------- */
@@ -87,7 +87,7 @@ canvas#c {
 #gps-hint {
     font-size: 1vw;
     color: #555;
-    margin-top: -10px; /* Posunout blíž k inputu */
+    margin-top: -10px; 
 }
 
 /* --- STYLY JOYSTICKU --- */
@@ -115,8 +115,8 @@ canvas#c {
 }
 
 #joystick-grid > div {
-    grid-column: 1 / 4; /* Střední řada */
-    display: contents; /* Umožní dětem sedět v gridu */
+    grid-column: 1 / 4; 
+    display: contents; 
 }
 
 #up-btn { grid-column: 2 / 3; grid-row: 1 / 2; }
@@ -213,7 +213,7 @@ canvas#c {
     }
 
     #joystick-grid {
-        max-width: 100%; /* Rozšíříme pro lepší klikání na mobilu */
+        max-width: 100%; 
         margin: 10px 0; /* Zarovnání doleva na mobilu */
     }
     #joystick-grid button {
