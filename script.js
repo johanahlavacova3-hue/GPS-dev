@@ -1,101 +1,70 @@
-// ==========================
-// INIT
-// ==========================
-const canvas = document.getElementById("canvas");
-const w = window.innerWidth;
-const h = window.innerHeight;
-
-const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
-renderer.setSize(w,h);
-
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x111111);
-
-const camera = new THREE.PerspectiveCamera(45, w/h, 0.1, 1000);
-camera.position.z = 5;
-
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-
-const light = new THREE.AmbientLight(0xffffff, 1);
-scene.add(light);
-
-// ==========================
-// PERLIN NOISE
-// ==========================
-class Perlin {
-    constructor() {
-        this.p = new Array(512);
-        this.permutation = [151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,
-        30,69,142,8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,
-        117,35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,134,
-        139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,
-        40,244,102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,135,
-        130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,250,124,123,5,202,38,147,
-        118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,223,183,170,213,119,
-        248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,129,22,39,253,19,98,108,110,
-        79,113,224,232,178,185,112,104,218,246,97,228,251,34,242,193,238,210,144,12,191,179,
-        162,241,81,51,145,235,249,14,239,107,49,192,214,31,181,199,106,157,184,84,204,176,
-        115,121,50,45,127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,
-        78,66,215,61,156,180];
-        for(let i=0;i<256;i++) this.p[i]=this.p[i+256]=this.permutation[i];
-    }
-    fade(t){ return t*t*t*(t*(t*6-15)+10); }
-    lerp(t,a,b){ return a+t*(b-a); }
-    grad(hash,x,y,z=0){ const h=hash&15; const u=h<8?x:y; const v=h<4?y:(h===12||h===14)?x:z; return ((h&1)===0?u:-u)+((h&2)===0?v:-v); }
-    noise(x,y,z=0){ const X=Math.floor(x)&255; const Y=Math.floor(y)&255; const Z=Math.floor(z)&255; x-=Math.floor(x); y-=Math.floor(y); z-=Math.floor(z); const u=this.fade(x); const v=this.fade(y); const w=this.fade(z); const A=this.p[X]+Y; const AA=this.p[A]+Z; const AB=this.p[A+1]+Z; const B=this.p[X+1]+Y; const BA=this.p[B]+Z; const BB=this.p[B+1]+Z; return this.lerp(w, this.lerp(v, this.lerp(u,this.grad(this.p[AA],x,y,z), this.grad(this.p[BA],x-1,y,z)), this.lerp(u,this.grad(this.p[AB],x,y-1,z), this.grad(this.p[BB],x-1,y-1,z))),0.0); }
+// main.js
+const offset = new THREE.Vector3((Math.random()-0.5),(Math.random()-0.5),(Math.random()-0.5));
+offset.multiplyScalar(strength*0.6);
+vertex.add(offset);
+pos.setXYZ(i, vertex.x, vertex.y, vertex.z);
 }
-const perlin = new Perlin();
+pos.needsUpdate = true;
+geom.computeVertexNormals();
 
-// ==========================
-// GEOMETRY
-// ==========================
-const geom = new THREE.BoxGeometry(2,2,2,1,1,1);
-const material = new THREE.MeshStandardMaterial({color:0x00ffdd, flatShading:false});
-const mesh = new THREE.Mesh(geom, material);
-scene.add(mesh);
-
-const originalPositions = geom.attributes.position.array.slice();
-
-// ==========================
-// GPS INPUT
-// ==========================
-const coordsInput = document.getElementById("coords-input");
-function getOffsetsFromGPS() {
-    const val = coordsInput.value.trim();
-    const match = val.match(/([0-9.+-]+)[^\d]+([0-9.+-]+)/);
-    if(!match) return {ox:0, oy:0};
-    const lat = parseFloat(match[1]);
-    const lon = parseFloat(match[2]);
-    return {ox:lat, oy:lon};
+if(hullMesh){ scene.remove(hullMesh); hullMesh.geometry.dispose(); hullMesh=null; }
 }
 
-// ==========================
-// DEFORMACE MESH
-// ==========================
-function deformMesh() {
-    const offsets = getOffsetsFromGPS();
-    const pos = geom.attributes.position.array;
-    for(let i=0;i<pos.length;i+=3){
-        const ox = offsets.ox*0.1;
-        const oy = offsets.oy*0.1;
-        pos[i]   = originalPositions[i] + perlin.noise(i*0.1+ox, i*0.1+oy)*0.5;
-        pos[i+1] = originalPositions[i+1] + perlin.noise(i*0.2+ox, i*0.2+oy)*0.5;
-        pos[i+2] = originalPositions[i+2] + perlin.noise(i*0.3+ox, i*0.3+oy)*0.5;
-    }
-    geom.attributes.position.needsUpdate = true;
-    geom.computeVertexNormals();
+function applySkin(){
+const geom = workingMesh.geometry;
+const pos = geom.attributes.position;
+const pts = [];
+const v = new THREE.Vector3();
+for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i); pts.push(v.clone()); }
+
+const hullGeo = new ConvexGeometry(pts);
+const mat = new THREE.MeshStandardMaterial({color:0xffb14d, metalness:0.1, roughness:0.6});
+if(hullMesh){ scene.remove(hullMesh); hullMesh.geometry.dispose(); }
+hullMesh = new THREE.Mesh(hullGeo, mat);
+hullMesh.position.copy(workingMesh.position);
+scene.add(hullMesh);
 }
 
-// ==========================
-// ANIMACE
-// ==========================
+function applySmooth(level=2){
+if(!hullMesh){
+let geom = workingMesh.geometry.clone();
+geom = geom.toNonIndexed();
+const mod = new SubdivisionModifier(level);
+const smoothGeo = mod.modify(geom);
+const mat = new THREE.MeshStandardMaterial({color:0x9b59ff, metalness:0.05, roughness:0.4});
+
+scene.remove(workingMesh);
+workingMesh.geometry.dispose();
+workingMesh = new THREE.Mesh(smoothGeo, mat);
+scene.add(workingMesh);
+} else {
+let geom = hullMesh.geometry.clone();
+geom = geom.toNonIndexed();
+const mod = new SubdivisionModifier(level);
+const smoothGeo = mod.modify(geom);
+
+scene.remove(hullMesh);
+hullMesh.geometry.dispose();
+hullMesh = new THREE.Mesh(smoothGeo, new THREE.MeshStandardMaterial({color:0xffb14d}));
+scene.add(hullMesh);
+}
+}
+
+function resetAll(){
+if(hullMesh){ scene.remove(hullMesh); hullMesh.geometry.dispose(); hullMesh=null; }
+if(workingMesh){ scene.remove(workingMesh); workingMesh.geometry.dispose(); }
+workingMesh = new THREE.Mesh(originalGeom.clone(), new THREE.MeshStandardMaterial({color:0x2ea3ff, metalness:0.1, roughness:0.5}));
+scene.add(workingMesh);
+}
+
+function onWindowResize(){
+camera.aspect = canvasWrap.clientWidth / canvasWrap.clientHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(canvasWrap.clientWidth, canvasWrap.clientHeight);
+}
+
 function animate(){
-    requestAnimationFrame(animate);
-    controls.update();
-    deformMesh();
-    mesh.rotation.y += 0.01;
-    renderer.render(scene, camera);
+requestAnimationFrame(animate);
+controls.update();
+renderer.render(scene, camera);
 }
-
-animate();
