@@ -1,16 +1,25 @@
 // ==========================
-// CANVAS INIT
+// THREE.JS + CANVAS 3D
 // ==========================
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.module.js';
+
+// Canvas z HTML
 const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
 const w = canvas.width;
 const h = canvas.height;
 
-// Buffer canvas pro dočasné zpracování
-const buffer = document.createElement("canvas");
-buffer.width = w;
-buffer.height = h;
-const bctx = buffer.getContext("2d");
+// Three.js renderer
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(w, h);
+
+// Scéna a kamera
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 1000);
+camera.position.z = 3;
+
+// Světlo
+const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+scene.add(ambientLight);
 
 // ==========================
 // PERLIN NOISE
@@ -40,18 +49,17 @@ class Perlin {
 const perlin = new Perlin();
 
 // ==========================
-// LOAD IMAGES
+// MIX TEXTURES INTO CANVAS
 // ==========================
-async function loadImage(img){
-    return new Promise(resolve=>{
-        if(img.complete) resolve();
-        else img.onload = resolve;
-    });
-}
+const mixCanvas = document.createElement("canvas");
+mixCanvas.width = 1024;
+mixCanvas.height = 1024;
+const mixCtx = mixCanvas.getContext("2d");
 
-// ==========================
-// PARSE GPS
-// ==========================
+const imgA = document.getElementById("imgA");
+const imgB = document.getElementById("imgB");
+
+// Parse GPS
 const coordsInput = document.getElementById("coords-input");
 function getOffsetsFromGPS(){
     const val = coordsInput.value.trim();
@@ -59,24 +67,25 @@ function getOffsetsFromGPS(){
     if(!match) return {ox:0, oy:0};
     const lat = parseFloat(match[1]);
     const lon = parseFloat(match[2]);
-    return {ox: lat*10, oy: lon*10}; // vynásobíme pro výraznější efekt
+    return {ox: lat*10, oy: lon*10};
 }
 
-// ==========================
-// MIX TEXTURES + GPS
-// ==========================
-function mixTwoTexturesWithGPS(imgA,imgB){
-    const out = ctx.createImageData(w,h);
-    const d = out.data;
+// Mix funkce (stejná logika jako 2D)
+function mixTexturesToCanvas(){
+    const w = mixCanvas.width;
+    const h = mixCanvas.height;
     const offsets = getOffsetsFromGPS();
 
-    bctx.clearRect(0,0,w,h);
-    bctx.drawImage(imgA,0,0,w,h);
-    const A = bctx.getImageData(0,0,w,h);
+    mixCtx.clearRect(0,0,w,h);
+    mixCtx.drawImage(imgA,0,0,w,h);
+    const A = mixCtx.getImageData(0,0,w,h);
 
-    bctx.clearRect(0,0,w,h);
-    bctx.drawImage(imgB,0,0,w,h);
-    const B = bctx.getImageData(0,0,w,h);
+    mixCtx.clearRect(0,0,w,h);
+    mixCtx.drawImage(imgB,0,0,w,h);
+    const B = mixCtx.getImageData(0,0,w,h);
+
+    const out = mixCtx.createImageData(w,h);
+    const d = out.data;
 
     const deformScale = 0.015;
     const chunkChaos = 0.6;
@@ -101,26 +110,39 @@ function mixTwoTexturesWithGPS(imgA,imgB){
             d[i+3]=255*soften;
         }
     }
-
-    ctx.putImageData(out,0,0);
+    mixCtx.putImageData(out,0,0);
 }
 
 // ==========================
-// INIT
+// 3D SPHERE WITH TEXTURE
 // ==========================
-async function initMix(){
-    const imgA = document.getElementById("imgA");
-    const imgB = document.getElementById("imgB");
-    await loadImage(imgA);
-    await loadImage(imgB);
-    mixTwoTexturesWithGPS(imgA,imgB);
-}
+const geometry = new THREE.SphereGeometry(1,128,128);
+let texture = new THREE.CanvasTexture(mixCanvas);
+const material = new THREE.MeshStandardMaterial({map: texture, roughness:0.5, metalness:0.2});
+const sphere = new THREE.Mesh(geometry, material);
+scene.add(sphere);
 
-// Reakce na změnu GPS
+// Re-mix textures when GPS changes
 coordsInput.addEventListener("input", () => {
-    const imgA = document.getElementById("imgA");
-    const imgB = document.getElementById("imgB");
-    mixTwoTexturesWithGPS(imgA,imgB);
+    mixTexturesToCanvas();
+    texture.needsUpdate = true;
 });
 
-initMix();
+// ==========================
+// INIT + ANIMATION
+// ==========================
+async function init(){
+    await new Promise(res=>{ if(imgA.complete && imgB.complete) res(); else { imgA.onload=imgB.onload=res; } });
+    mixTexturesToCanvas();
+    texture.needsUpdate = true;
+    animate();
+}
+
+function animate(){
+    requestAnimationFrame(animate);
+    sphere.rotation.y += 0.01; // rotace jojo
+    sphere.rotation.x += 0.005;
+    renderer.render(scene,camera);
+}
+
+init();
