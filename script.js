@@ -2,114 +2,145 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // ---- Základní nastavení scény ----
-
-// Scéna
 const scene = new THREE.Scene();
-
-// Kamera (perspektivní, aby měla hloubku)
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 20; // Posuneme kameru dozadu
+camera.position.z = 15; // Posunul jsem kameru blíž, protože objekt bude kompaktnější
 
-// Renderer (kreslíř)
 const canvas = document.querySelector('#c');
 const renderer = new THREE.WebGLRenderer({ 
     canvas: canvas,
-    antialias: true // Vyhlazování hran
+    antialias: true // Necháme vyhlazování, zrnitý bude materiál
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0x000000); // Černé pozadí, jako na obrázcích
+renderer.setClearColor(0x000000); // Černé pozadí
 
-// Ovládání myší (orbit controls) - umožňuje otáčet objektem
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true; // Plynulé zpomalení pohybu
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+// ---- NOVINKA: Světla ----
+// Pevné materiály (Mesh) potřebují světlo, aby byly vidět.
+const ambientLight = new THREE.AmbientLight(0x404040, 2); // Měkké globální světlo
+scene.add(ambientLight);
+
+const directionalLight = new THREE.DirectionalLight(0xffffff, 2.5); // Ostré světlo (jako slunce)
+directionalLight.position.set(5, 10, 7.5); // Světlo přichází zešikma shora
+scene.add(directionalLight);
+
+// ---- NOVINKA: Funkce pro vytvoření zrnité textury ----
+function createGrainyTexture() {
+    const size = 128; // Stačí malá textura, bude se opakovat
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    const imageData = ctx.createImageData(size, size);
+    const data = imageData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+        // Náhodná hodnota šedi (pro "zrno")
+        const val = Math.random() * 255;
+        data[i] = val;     // R
+        data[i + 1] = val; // G
+        data[i + 2] = val; // B
+        data[i + 3] = 255; // A (plná viditelnost)
+    }
+    ctx.putImageData(imageData, 0, 0);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping; // Opakovat texturu vodorovně
+    texture.wrapT = THREE.RepeatWrapping; // Opakovat texturu svisle
+    texture.needsUpdate = true;
+    return texture;
+}
+
+// Vytvoříme texturu jen jednou
+const grainyBumpTexture = createGrainyTexture();
 
 // ---- Generování 3D tvaru ----
 
-let currentShape = null; // Proměnná pro uložení aktuálního tvaru
+let currentShape = null;
 
 function generateRandomShape() {
-    // 1. Pokud už nějaký tvar existuje, smažeme ho
     if (currentShape) {
         scene.remove(currentShape);
-        currentShape.geometry.dispose(); // Uvolníme paměť
+        currentShape.geometry.dispose();
         currentShape.material.dispose();
     }
 
-    // 2. Vytvoříme náhodné body v 3D prostoru
+    // 1. Náhodné body (ZMĚNA: "více u sebe")
     const points = [];
     let currentPos = new THREE.Vector3(0, 0, 0);
 
-    for (let i = 0; i < 20; i++) { // 20 hlavních "uzlů"
+    for (let i = 0; i < 20; i++) {
         const randomDirection = new THREE.Vector3(
-            (Math.random() - 0.5) * 2, // náhodný směr x
-            (Math.random() - 0.5) * 2, // náhodný směr y
-            (Math.random() - 0.5) * 2  // náhodný směr z
-        ).normalize(); // Normalizujeme (délka vektoru bude 1)
+            (Math.random() - 0.5) * 2,
+            (Math.random() - 0.5) * 2,
+            (Math.random() - 0.5) * 2
+        ).normalize();
 
-        const randomLength = Math.random() * 5 + 3; // Náhodná délka kroku
+        // ZMĚNA: Menší "kroky", aby byl tvar kompaktnější
+        const randomLength = Math.random() * 2 + 1.5; // (Bylo: 5 + 3)
         currentPos.add(randomDirection.multiplyScalar(randomLength));
         points.push(currentPos.clone());
     }
 
-    // 3. Vytvoříme plynulou křivku, která prochází všemi body
-    // true = křivka se na konci spojí s začátkem (uzavřená smyčka)
     const curve = new THREE.CatmullRomCurve3(points, true, 'catmullrom', 0.5);
 
-    // 4. Vytvoříme geometrii "trubice" podél této křivky
-    // (křivka, počet segmentů podél, rádius, počet segmentů v řezu, uzavřená)
-    const tubeGeometry = new THREE.TubeGeometry(curve, 300, 0.8, 12, true);
+    // 2. Geometrie trubice (ZMĚNA: "širší roura")
+    const tubeGeometry = new THREE.TubeGeometry(
+        curve,
+        300,  // Segmenty podél trubky
+        2.0,  // ZMĚNA: Rádius (tloušťka) (Bylo: 0.8)
+        16,   // Segmenty v řezu (více, aby byla kulatější)
+        true  // Uzavřená
+    );
 
-    // 5. Vytvoříme materiál - MRAČNO BODŮ
-    // Toto je klíč k dosažení vzhledu z obrázku genderA.png
-    const pointsMaterial = new THREE.PointsMaterial({
-        color: 0xffffff, // Bílá barva bodů
-        size: 0.1,       // Velikost každého bodu
-        sizeAttenuation: true // Body dál od kamery budou menší
+    // 3. Materiál (ZMĚNA: "mega grainy solid material")
+    const solidMaterial = new THREE.MeshStandardMaterial({
+        color: 0xe0e0e0,      // Světle šedá, skoro bílá
+        roughness: 0.7,       // Matný povrch (0 = lesk, 1 = mat)
+        metalness: 0.1,       // Trochu kovový odlesk
+        
+        // Klíčová část: Použijeme zrnitou texturu jako "mapu hrbolů"
+        bumpMap: grainyBumpTexture,
+        bumpScale: 0.15, // Jak moc je zrnitost vidět (vylaďte si)
     });
 
-    // 6. Vytvoříme finální objekt Points (ne Mesh)
-    currentShape = new THREE.Points(tubeGeometry, pointsMaterial);
+    // 4. Finální objekt (ZMĚNA: Mesh, ne Points)
+    currentShape = new THREE.Mesh(tubeGeometry, solidMaterial);
     
-    // Náhodně objekt pootočíme
     currentShape.rotation.set(
         Math.random() * Math.PI * 2,
         Math.random() * Math.PI * 2,
         Math.random() * Math.PI * 2
     );
 
-    // 7. Přidáme objekt do scény
     scene.add(currentShape);
 }
 
 // ---- Animační smyčka ----
 
 function animate() {
-    requestAnimationFrame(animate); // Požádá prohlížeč o další snímek
+    requestAnimationFrame(animate);
 
-    // Plynule otáčíme celým tvarem (pokud nějaký je)
     if (currentShape) {
          currentShape.rotation.x += 0.001;
          currentShape.rotation.y += 0.002;
     }
 
-    controls.update(); // Aktualizuje ovládání myší
-    renderer.render(scene, camera); // Vykreslí scénu
+    controls.update();
+    renderer.render(scene, camera);
 }
 
 // ---- Spuštění a interakce ----
-
-// Přizpůsobení velikosti okna
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Generování nového tvaru při kliknutí
 window.addEventListener('click', generateRandomShape);
 
-// Vygenerujeme první tvar hned po načtení
-generateRandomShape();
-
-// Spustíme animační smyčku
-animate();
+generateRandomShape(); // Vygenerujeme první tvar
+animate(); // Spustíme animaci
