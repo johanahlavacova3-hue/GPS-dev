@@ -1,144 +1,115 @@
-// Function to generate a central object image based on GPS coordinates
-function generateCentralObject(coords) {
-    const canvas = document.getElementById('myCanvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-    // Parse coordinates from format like "49.5674321N, 16.0009999E"
-    const parts = coords.split(',').map(part => part.trim());
-    if (parts.length !== 2) {
-        alert('Invalid coordinates format. Use like: 49.5674321N, 16.0009999E');
-        return;
-    }
-    let lat = parseFloat(parts[0].slice(0, -1));
-    const latDir = parts[0].slice(-1).toUpperCase();
-    let lon = parseFloat(parts[1].slice(0, -1));
-    const lonDir = parts[1].slice(-1).toUpperCase();
+// ---- Základní nastavení scény ----
 
-    if (latDir === 'S') lat = -lat;
-    if (lonDir === 'W') lon = -lon;
+// Scéna
+const scene = new THREE.Scene();
 
-    if (isNaN(lat) || isNaN(lon)) {
-        alert('Invalid latitude or longitude values.');
-        return;
-    }
+// Kamera (perspektivní, aby měla hloubku)
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.z = 20; // Posuneme kameru dozadu
 
-    // Extract numbers from lat and lon (assuming they are floats like 50.0755, 14.4378)
-    const latStr = Math.abs(lat).toString().replace('.', '');
-    const lonStr = Math.abs(lon).toString().replace('.', '');
-    const combinedDigits = (latStr + lonStr).split('').map(Number); // Array of digits
+// Renderer (kreslíř)
+const canvas = document.querySelector('#c');
+const renderer = new THREE.WebGLRenderer({ 
+    canvas: canvas,
+    antialias: true // Vyhlazování hran
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x000000); // Černé pozadí, jako na obrázcích
 
-    // Perform 80 computations: multiplications, subtractions, additions, etc., to create "random" values
-    let computations = [];
-    let seed = lat + lon;
-    for (let i = 0; i < 80; i++) {
-        let val = combinedDigits[i % combinedDigits.length]; // Cycle through digits
-        val *= (i + 1) * Math.abs(seed); // Multiply by index and sum of coords
-        val -= Math.sin(lat * Math.PI / 180) * 100; // Subtract sine-based value (in degrees to radians)
-        val += Math.cos(lon * Math.PI / 180) * 50; // Add cosine-based value
-        val *= (Math.random() + 0.5) * (seed % 100 + 1); // Introduce randomness scaled by seed
-        val = Math.abs(val % 255); // Clamp to 0-255 for color use
-        computations.push(val);
-        seed += val; // Update seed for next computation
+// Ovládání myší (orbit controls) - umožňuje otáčet objektem
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; // Plynulé zpomalení pohybu
+
+// ---- Generování 3D tvaru ----
+
+let currentShape = null; // Proměnná pro uložení aktuálního tvaru
+
+function generateRandomShape() {
+    // 1. Pokud už nějaký tvar existuje, smažeme ho
+    if (currentShape) {
+        scene.remove(currentShape);
+        currentShape.geometry.dispose(); // Uvolníme paměť
+        currentShape.material.dispose();
     }
 
-    // Use computations to generate image parameters
-    const w = canvas.width;
-    const h = canvas.height;
-    const img = ctx.createImageData(w, h);
-    const d = img.data;
-    const cx = w / 2;
-    const cy = h / 2;
-
-    // Base radius influenced by first 10 computations average, scaled reasonably
-    const avgFirst10 = computations.slice(0, 10).reduce((a, b) => a + b, 0) / 10;
-    const baseRadius = Math.min(w, h) * (0.1 + (avgFirst10 / 255) * 0.3); // Between 0.1 and 0.4 of min dimension
-
-    // Generate a random shape using computations for points
-    const pointCount = 5 + Math.floor(computations[10] / 50); // 5 to ~10 points
+    // 2. Vytvoříme náhodné body v 3D prostoru
     const points = [];
-    for (let i = 0; i < pointCount; i++) {
-        const ang = (Math.PI * 2 * i) / pointCount + (computations[i] / 255) * Math.PI / 4; // Slight rotation variation
-        const radiusVariation = 0.7 + (computations[i + 20] / 255) * 0.6;
-        const radius = baseRadius * radiusVariation;
-        points.push({
-            x: cx + Math.cos(ang) * radius,
-            y: cy + Math.sin(ang) * radius
-        });
+    let currentPos = new THREE.Vector3(0, 0, 0);
+
+    for (let i = 0; i < 20; i++) { // 20 hlavních "uzlů"
+        const randomDirection = new THREE.Vector3(
+            (Math.random() - 0.5) * 2, // náhodný směr x
+            (Math.random() - 0.5) * 2, // náhodný směr y
+            (Math.random() - 0.5) * 2  // náhodný směr z
+        ).normalize(); // Normalizujeme (délka vektoru bude 1)
+
+        const randomLength = Math.random() * 5 + 3; // Náhodná délka kroku
+        currentPos.add(randomDirection.multiplyScalar(randomLength));
+        points.push(currentPos.clone());
     }
 
-    // Function to determine if point is inside the polygon (ray-casting)
-    function isInsidePolygon(px, py, pts) {
-        let inside = false;
-        for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
-            const xi = pts[i].x, yi = pts[i].y;
-            const xj = pts[j].x, yj = pts[j].y;
-            const intersect = ((yi > py) !== (yj > py)) &&
-                (px < (xj - xi) * (py - yi) / (yj - yi + 0.00001) + xi);
-            if (intersect) inside = !inside;
-        }
-        return inside;
-    }
+    // 3. Vytvoříme plynulou křivku, která prochází všemi body
+    // true = křivka se na konci spojí s začátkem (uzavřená smyčka)
+    const curve = new THREE.CatmullRomCurve3(points, true, 'catmullrom', 0.5);
 
-    // Function to get soft field value (distance-based opacity)
-    function softField(px, py) {
-        let minDist = Infinity;
-        for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
-            const x1 = points[j].x, y1 = points[j].y;
-            const x2 = points[i].x, y2 = points[i].y;
-            const A = px - x1;
-            const B = py - y1;
-            const C = x2 - x1;
-            const D = y2 - y1;
-            const dot = A * C + B * D;
-            const lenSq = C * C + D * D;
-            let t = dot / lenSq;
-            t = Math.max(0, Math.min(1, t));
-            const ex = x1 + t * C;
-            const ey = y1 + t * D;
-            const dx = px - ex;
-            const dy = py - ey;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < minDist) minDist = dist;
-        }
-        const inside = isInsidePolygon(px, py, points);
-        const blurRadius = baseRadius * 0.3;
-        let field = 0;
-        if (inside) {
-            field = Math.min(1, minDist / blurRadius);
-        }
-        // Add some noise for texture
-        const noise = (Math.sin(px * 0.05) + Math.cos(py * 0.05)) * 0.1;
-        field += noise;
-        field = Math.min(1, Math.max(0, field));
-        return field;
-    }
+    // 4. Vytvoříme geometrii "trubice" podél této křivky
+    // (křivka, počet segmentů podél, rádius, počet segmentů v řezu, uzavřená)
+    const tubeGeometry = new THREE.TubeGeometry(curve, 300, 0.8, 12, true);
 
-    // Render the image pixel by pixel using computations for colors and opacity
-    for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-            const i = (y * w + x) * 4;
-            const f = softField(x, y);
-            if (f <= 0) {
-                d[i + 3] = 0; // Transparent
-                continue;
-            }
+    // 5. Vytvoříme materiál - MRAČNO BODŮ
+    // Toto je klíč k dosažení vzhledu z obrázku genderA.png
+    const pointsMaterial = new THREE.PointsMaterial({
+        color: 0xffffff, // Bílá barva bodů
+        size: 0.1,       // Velikost každého bodu
+        sizeAttenuation: true // Body dál od kamery budou menší
+    });
 
-            // Use computations for color: cycle through them
-            const compIndex = (x * 3 + y * 7) % 80; // Better mixing
-            const r = computations[(compIndex + 0) % 80];
-            const g = computations[(compIndex + 20) % 80];
-            const b = computations[(compIndex + 40) % 80];
+    // 6. Vytvoříme finální objekt Points (ne Mesh)
+    currentShape = new THREE.Points(tubeGeometry, pointsMaterial);
+    
+    // Náhodně objekt pootočíme
+    currentShape.rotation.set(
+        Math.random() * Math.PI * 2,
+        Math.random() * Math.PI * 2,
+        Math.random() * Math.PI * 2
+    );
 
-            // Grain and variation
-            const grain = (Math.random() - 0.5) * 20;
-            d[i] = Math.min(255, Math.max(0, r + grain));
-            d[i + 1] = Math.min(255, Math.max(0, g + grain));
-            d[i + 2] = Math.min(255, Math.max(0, b + grain));
-            d[i + 3] = Math.floor(f * 255);
-        }
-    }
-
-    ctx.clearRect(0, 0, w, h);
-    ctx.putImageData(img, 0, 0);
+    // 7. Přidáme objekt do scény
+    scene.add(currentShape);
 }
+
+// ---- Animační smyčka ----
+
+function animate() {
+    requestAnimationFrame(animate); // Požádá prohlížeč o další snímek
+
+    // Plynule otáčíme celým tvarem (pokud nějaký je)
+    if (currentShape) {
+         currentShape.rotation.x += 0.001;
+         currentShape.rotation.y += 0.002;
+    }
+
+    controls.update(); // Aktualizuje ovládání myší
+    renderer.render(scene, camera); // Vykreslí scénu
+}
+
+// ---- Spuštění a interakce ----
+
+// Přizpůsobení velikosti okna
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Generování nového tvaru při kliknutí
+window.addEventListener('click', generateRandomShape);
+
+// Vygenerujeme první tvar hned po načtení
+generateRandomShape();
+
+// Spustíme animační smyčku
+animate();
