@@ -1,143 +1,140 @@
-function generateCentralObject(lat, lon) {
-    if (!ctx) return;
-    GENETIC_TRAITS = CoordinateGenetics(lat, lon);
-    const T = GENETIC_TRAITS;
+// ==========================
+// CANVAS INIT
+// ==========================
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
+// Dvě textury (PNG) – v HTML musíš mít <img id="imgA"> a <img id="imgB">
+const imgA = document.getElementById("imgA");
+const imgB = document.getElementById("imgB");
+
+// Místo kde se bude mixovat – používáme dočasný buffer
+const buffer = document.createElement("canvas");
+const bctx = buffer.getContext("2d");
+
+canvas.width = 800;
+canvas.height = 800;
+buffer.width = 800;
+buffer.height = 800;
+
+// ==========================
+// PERLIN NOISE
+// ==========================
+class Perlin {
+    constructor() {
+        this.p = new Array(512);
+        this.permutation = [151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,
+        30,69,142,8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,
+        117,35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,134,
+        139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,
+        40,244,102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,135,
+        130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,250,124,123,5,202,38,147,
+        118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,223,183,170,213,119,
+        248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,129,22,39,253,19,98,108,110,
+        79,113,224,232,178,185,112,104,218,246,97,228,251,34,242,193,238,210,144,12,191,179,
+        162,241,81,51,145,235,249,14,239,107,49,192,214,31,181,199,106,157,184,84,204,176,
+        115,121,50,45,127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,
+        78,66,215,61,156,180];
+
+        for (let i = 0; i < 256; i++)
+            this.p[i] = this.p[i + 256] = this.permutation[i];
+    }
+
+    fade(t){ return t * t * t * (t * (t * 6 - 15) + 10); }
+    lerp(t, a, b){ return a + t * (b - a); }
+
+    grad(hash, x, y){
+        const h = hash & 15;
+        const u = h < 8 ? x : y;
+        const v = h < 4 ? y : (h === 12 || h === 14) ? x : 0;
+        return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+    }
+
+    noise(x, y){
+        const X = Math.floor(x) & 255;
+        const Y = Math.floor(y) & 255;
+        x -= Math.floor(x);
+        y -= Math.floor(y);
+        const u = this.fade(x);
+        const v = this.fade(y);
+        const A = this.p[X] + Y;
+        const B = this.p[X + 1] + Y;
+        return this.lerp(v,
+            this.lerp(u,
+                this.grad(this.p[A], x, y),
+                this.grad(this.p[B], x - 1, y)),
+            this.lerp(u,
+                this.grad(this.p[A + 1], x, y - 1),
+                this.grad(this.p[B + 1], x - 1, y - 1))
+        );
+    }
+}
+
+const perlin = new Perlin();
+
+// =============================
+// ORGANICKÉ MÍCHANÍ 2 PNG
+// =============================
+function mixTwoTextures() {
     const w = canvas.width;
     const h = canvas.height;
-    const img = ctx.createImageData(w, h);
-    const d = img.data;
 
-    const cx = w / 2;
-    const cy = h / 2;
+    // buffer pro mix
+    bctx.clearRect(0, 0, w, h);
 
-    // Velikost blobu
-    const BASE_RADIUS = Math.min(w, h) * 0.25;
+    // nahrajeme oba PNG do paměti
+    bctx.drawImage(imgA, 0, 0, w, h);
+    const A = bctx.getImageData(0, 0, w, h);
 
-    // Kolik náhodných tvarů kombinujeme → výsledkem je extra měkké rozptýlení
-    const SHAPE_LAYERS = 3 + Math.floor(Math.random() * 3);
+    bctx.clearRect(0, 0, w, h);
+    bctx.drawImage(imgB, 0, 0, w, h);
+    const B = bctx.getImageData(0, 0, w, h);
 
-    // Základní rozmazání tvaru
-    const SOFTNESS = 0.85;  
-    const DEFORM = 0.35;    
-    const BLUR_NOISE_SCALE = 0.009;
+    const out = ctx.createImageData(w, h);
+    const d = out.data;
 
-    // Generujeme několik základních náhodných polygonů, které se vzájemně prolínají
-    const shapeFields = [];
+    const deformScale = 0.015;     // Zvýšíš → výraznější organická deformace
+    const chunkChaos = 0.6;        // Zvýšíš → víc náhodných skoků mezi texturami
+    const blurNoise = 0.012;       // Zvýšíš → měkčí okraje, víc mlhy
 
-    for (let s = 0; s < SHAPE_LAYERS; s++) {
-        const points = [];
-        const pointCount = 5 + Math.floor(Math.random() * 8); // občas čtverec, občas mnohoúhelník
-
-        for (let i = 0; i < pointCount; i++) {
-            const ang = (Math.PI * 2 * i) / pointCount;
-            const radius =
-                BASE_RADIUS *
-                (0.6 + Math.random() * 0.8) *
-                (1 + perlin.noise(i * 0.22, (T.FinalSeed + s) * 0.002) * DEFORM);
-
-            points.push({
-                x: cx + Math.cos(ang) * radius,
-                y: cy + Math.sin(ang) * radius
-            });
-        }
-
-        shapeFields.push(points);
-    }
-
-    // Funkce pro měkké „uvnitř-tvaru“ – vzdálenost k polygonu + noise
-    function softField(px, py) {
-        let fieldValue = 0;
-
-        for (let l = 0; l < shapeFields.length; l++) {
-            const pts = shapeFields[l];
-            let minDist = Infinity;
-
-            // vzdálenost ke všem hranám polygonu
-            for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
-                const x1 = pts[j].x, y1 = pts[j].y;
-                const x2 = pts[i].x, y2 = pts[i].y;
-
-                const A = px - x1;
-                const B = py - y1;
-                const C = x2 - x1;
-                const D = y2 - y1;
-
-                const dot = A * C + B * D;
-                const lenSq = C * C + D * D;
-                let t = dot / lenSq;
-                t = Math.max(0, Math.min(1, t));
-
-                const ex = x1 + t * C;
-                const ey = y1 + t * D;
-                const dx = px - ex;
-                const dy = py - ey;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                if (dist < minDist) minDist = dist;
-            }
-
-            let inside = false;
-            for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
-                const xi = pts[i].x, yi = pts[i].y;
-                const xj = pts[j].x, yj = pts[j].y;
-                const intersect =
-                    (yi > py) !== (yj > py) &&
-                    px <
-                        ((xj - xi) * (py - yi)) /
-                            (yj - yi + 0.00001) +
-                            xi;
-                if (intersect) inside = !inside;
-            }
-
-            let layerField = inside ? 1 - minDist / (BASE_RADIUS * SOFTNESS) : 0;
-
-            // jemné rozpuštění hran přes noise
-            const n = perlin.noise(px * BLUR_NOISE_SCALE, py * BLUR_NOISE_SCALE);
-            layerField *= 0.7 + n * 0.3;
-
-            // skládáme vrstvy
-            fieldValue = Math.max(fieldValue, layerField);
-        }
-
-        return fieldValue;
-    }
-
-    // vykreslení
     for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
+
             const i = (y * w + x) * 4;
 
-            const f = softField(x, y);
+            // náhodné přeskakování mezi obrázky
+            const jump = Math.abs(perlin.noise(x * chunkChaos, y * chunkChaos));
 
-            if (f <= 0) {
-                d[i + 3] = 0;
-                continue;
-            }
+            // organická deformace souřadnic
+            const dx = perlin.noise(x * deformScale, y * deformScale) * 40;
+            const dy = perlin.noise(x * deformScale + 200, y * deformScale + 200) * 40;
 
-            // grain
-            const grain =
-                (Math.random() - 0.5) *
-                45 *
-                T.GrainIntensity;
+            // index s posunem
+            let xx = Math.floor((x + dx + w) % w);
+            let yy = Math.floor((y + dy + h) % h);
+            let j = (yy * w + xx) * 4;
 
-            // noise textura pro biomateriál
-            let n = perlin.noise(
-                x * 0.01 + T.OffsetX * 50,
-                y * 0.01 + T.OffsetY * 50
-            );
-            n = (n + 1) / 2;
+            // výběr mezi textura A / B
+            const src = jump > 0.5 ? A.data : B.data;
 
-            const gray = Math.min(
-                255,
-                Math.max(0, n * 255 + grain)
-            );
+            // grayscale
+            const gray = (src[j] + src[j + 1] + src[j + 2]) / 3;
 
-            d[i] = d[i + 1] = d[i + 2] = gray;
-            d[i + 3] = Math.floor(f * 255);
+            // noise rozmazání a hrany měkké jak masa
+            const soften = (perlin.noise(x * blurNoise, y * blurNoise) + 1) * 0.5;
+
+            d[i] = d[i + 1] = d[i + 2] = gray * soften;
+            d[i + 3] = 255 * soften; // alpha softness
         }
     }
 
-    ctx.clearRect(0, 0, w, h);
-    ctx.putImageData(img, 0, 0);
+    ctx.putImageData(out, 0, 0);
 }
+
+// čekáme na načtení obrázků
+imgA.onload = () => {
+    if (imgB.complete) mixTwoTextures();
+};
+imgB.onload = () => {
+    if (imgA.complete) mixTwoTextures();
+};
