@@ -1,43 +1,29 @@
-<!DOCTYPE html>
+<!-- index.html -->
+<!doctype html>
 <html lang="cs">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>GRPW-023 | GPS ART</title>
-
-  <!-- Google Font -->
-  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono&display=swap" rel="stylesheet">
-
-  <!-- CSS -->
-  <link rel="stylesheet" href="style.css">
-
-  <!-- Three.js a OrbitControls -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/examples/js/controls/OrbitControls.js"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Deformující kostka</title>
+<link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="crt">
-    <div class="screen">
-      <h1>Organický mix dvou PNG textur</h1>
-
-      <canvas id="canvas"></canvas>
-
-      <!-- GPS input -->
-      <input id="coords-input" placeholder="50.0561814N, 13.2822869E">
-
-      <div class="overlay">
-        <div class="header">
-          <h1>GRPW-023</h1>
-          <div class="coords" id="coords">50.0561814N, 13.2822869E</div>
-        </div>
-        <div class="footer">
-          <span id="status">VLOŽTE LIBOVOLNOU GPS</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Script -->
-  <script src="script.js"></script>
+<div id="app">
+<div id="canvas-wrap">
+<div id="ui">
+<h3>Deformace kostky</h3>
+<label>Intenzita deformace <span id="ampVal">0.25</span></label>
+<input id="amp" type="range" min="0" max="1" step="0.01" value="0.25">
+<label>Počet subdivizí (smooth)</label>
+<input id="subdiv" type="range" min="0" max="4" step="1" value="2">
+<button id="randomize">Náhodně deformovat</button>
+<button id="applySkin">Aplikovat skin</button>
+<button id="smooth">Aplikovat smooth</button>
+<button id="reset">Reset</button>
+</div>
+<div id="credit">Myš: otáčet, kolečko: zoom, pravé tlačítko: posun</div>
+</div>
+</div>
+<script type="module" src="main.js"></script>
 </body>
 </html>
