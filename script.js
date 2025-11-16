@@ -1,10 +1,13 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+// ---- NOVÉ IMPORTY PRO POST-PROCESSING ----
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { FilmPass } from 'three/addons/postprocessing/FilmPass.js'; // Použijeme pro Grain
 
 // ---- Základní nastavení scény ----
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-// Kamera blíž pro detail
 camera.position.z = 15; 
 
 const canvas = document.querySelector('#c');
@@ -13,58 +16,40 @@ const renderer = new THREE.WebGLRenderer({
     antialias: true 
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
-// ZMĚNA: Nastavíme ostřejší černou a silnější kontrast při vykreslování
 renderer.setClearColor(0x000000); 
-renderer.toneMapping = THREE.ACESFilmicToneMapping; // Moderní tone mapping pro kontrast
-renderer.toneMappingExposure = 1.2; // Lehce zesílíme expozici
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2; 
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; 
 
-// ---- Světla ----
-// Zesílíme světla pro ostré stíny
-const ambientLight = new THREE.AmbientLight(0x404040, 1.5); // Měkké globální světlo
+// ---- NOVINKA: Nastavení Composeru pro Post-processing ----
+const composer = new EffectComposer(renderer);
+
+// 1. Render Pass: Řekne composeru, co má vykreslit (naši scénu a kameru)
+const renderPass = new RenderPass(scene, camera);
+composer.addPass(renderPass);
+
+// 2. Film Pass: Přidá filmový šum (grain) a prach.
+const filmPass = new FilmPass(
+    0.7,   // Intenzita zrna (šumu) - ZMĚNA: Vysoká hodnota pro "mega grain"
+    0.025, // Intenzita prachu/rušení
+    648,   // Frekvence šumu (jak hustě se body objevují)
+    false  // Monochrome (černobílý grain)
+);
+composer.addPass(filmPass);
+
+
+// ---- Světla (Zůstávají) ----
+const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 5.0); // ZMĚNA: Velmi silné bílé světlo
+const directionalLight = new THREE.DirectionalLight(0xffffff, 5.0);
 directionalLight.position.set(5, 10, 7.5);
 scene.add(directionalLight);
 
 
-// ---- NOVINKA: Funkce pro BINÁRNÍ GRAIN (MAXIMÁLNÍ KONTRAST) ----
-function createHighContrastGrainyTexture() {
-    const size = 64; // Menší velikost textury pro hrubší grain
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d');
-
-    const imageData = ctx.createImageData(size, size);
-    const data = imageData.data;
-
-    for (let i = 0; i < data.length; i += 4) {
-        // ZMĚNA: Vytváříme čistě černou (0) nebo čistě bílou (255)
-        const val = Math.random() < 0.5 ? 0 : 255; 
-        data[i] = val;     // R
-        data[i + 1] = val; // G
-        data[i + 2] = val; // B
-        data[i + 3] = 255; // A
-    }
-    ctx.putImageData(imageData, 0, 0);
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping; 
-    texture.wrapT = THREE.RepeatWrapping;
-    // ZMĚNA: NECHceme, aby se textury při zvětšení rozmazaly (filtrovaly)
-    texture.magFilter = THREE.NearestFilter; 
-    texture.needsUpdate = true;
-    return texture;
-}
-
-const grainyBumpTexture = createHighContrastGrainyTexture();
-
-
-// ---- Generování 3D tvaru ----
+// ---- Grain Texture je ODSTRANĚNA ----
 
 let currentShape = null; 
 
@@ -96,39 +81,28 @@ function generateRandomShape() {
     const curve = new THREE.CatmullRomCurve3(points, true, 'catmullrom', 0.5);
 
     // 4. Geometrie trubice (tlustá)
-    // ZMĚNA: Pro ostrý bump map efekt je vhodné, aby geometrie měla dostatek vrcholů
     const tubeGeometry = new THREE.TubeGeometry(
         curve, 
-        400, // Zvýšeno pro detailnější křivku
+        400, 
         2.0,  
-        32,   // ZMĚNA: Více segmentů v řezu (lepší pro bump)
+        32,   
         true
     );
 
-    // 5. Vytvoříme materiál (SOLID a OSTRÝ)
+    // 5. Vytvoříme materiál (ZMĚNA: POUZE MATNÝ, ŽÁDNÁ TEXTURA)
     const solidMaterial = new THREE.MeshStandardMaterial({
-        color: 0xffffff,        // ZMĚNA: Čistě bílá barva pro maximální kontrast
+        color: 0xffffff,        // Čistě bílá
         roughness: 0.8,         // Matný povrch
         metalness: 0.0,         
-        
-        bumpMap: grainyBumpTexture,
-        bumpScale: 0.5,         // Sníženo, protože binární grain má silnější vizuální dopad
+        // Bump map odstraněn
     });
 
     // 6. Finální objekt
     currentShape = new THREE.Mesh(tubeGeometry, solidMaterial);
-    
-    // Náhodné pootočení
-    currentShape.rotation.set(
-        Math.random() * Math.PI * 2,
-        Math.random() * Math.PI * 2,
-        Math.random() * Math.PI * 2
-    );
-
     scene.add(currentShape);
 }
 
-// ---- Animační smyčka a interakce (Beze změny) ----
+// ---- Animační smyčka (ZMĚNA: Používáme composer) ----
 
 function animate() {
     requestAnimationFrame(animate); 
@@ -139,13 +113,17 @@ function animate() {
     }
 
     controls.update(); 
-    renderer.render(scene, camera); 
+    // ZMĚNA: Místo renderer.render() voláme composer.render()
+    composer.render(); 
 }
+
+// ---- Interakce (Beze změny) ----
 
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight); // ZMĚNA: Composer také potřebuje update velikosti
 });
 
 window.addEventListener('click', generateRandomShape);
