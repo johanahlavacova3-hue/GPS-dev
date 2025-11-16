@@ -4,7 +4,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { FilmPass } from 'three/addons/postprocessing/FilmPass.js';
 
-// ---- GLOBÁLNÍ STAV A KONSTANTY ----
+// ---- GLOBÁLNÍ STAV A KONSTmANTY ----
 
 let baseLat = 0.5; // Základní souřadnice z GPS inputu
 let baseLon = 0.5;
