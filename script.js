@@ -3,16 +3,10 @@
 // ==========================
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
-
-// synchronizace velikosti s HTML
 const w = canvas.width;
 const h = canvas.height;
 
-// Dvě textury (PNG) – v HTML musíš mít <img id="imgA"> a <img id="imgB">
-const imgA = document.getElementById("imgA");
-const imgB = document.getElementById("imgB");
-
-// Buffer pro mix
+// Buffer canvas pro dočasné zpracování
 const buffer = document.createElement("canvas");
 buffer.width = w;
 buffer.height = h;
@@ -36,98 +30,97 @@ class Perlin {
         162,241,81,51,145,235,249,14,239,107,49,192,214,31,181,199,106,157,184,84,204,176,
         115,121,50,45,127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,
         78,66,215,61,156,180];
-
-        for (let i = 0; i < 256; i++)
-            this.p[i] = this.p[i + 256] = this.permutation[i];
+        for (let i = 0; i < 256; i++) this.p[i] = this.p[i + 256] = this.permutation[i];
     }
-
-    fade(t){ return t * t * t * (t * (t * 6 - 15) + 10); }
-    lerp(t, a, b){ return a + t * (b - a); }
-
-    grad(hash, x, y){
-        const h = hash & 15;
-        const u = h < 8 ? x : y;
-        const v = h < 4 ? y : (h === 12 || h === 14) ? x : 0;
-        return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
-    }
-
-    noise(x, y){
-        const X = Math.floor(x) & 255;
-        const Y = Math.floor(y) & 255;
-        x -= Math.floor(x);
-        y -= Math.floor(y);
-        const u = this.fade(x);
-        const v = this.fade(y);
-        const A = this.p[X] + Y;
-        const B = this.p[X + 1] + Y;
-        return this.lerp(v,
-            this.lerp(u,
-                this.grad(this.p[A], x, y),
-                this.grad(this.p[B], x - 1, y)),
-            this.lerp(u,
-                this.grad(this.p[A + 1], x, y - 1),
-                this.grad(this.p[B + 1], x - 1, y - 1))
-        );
-    }
+    fade(t){ return t*t*t*(t*(t*6-15)+10); }
+    lerp(t,a,b){ return a + t*(b-a); }
+    grad(hash,x,y){ const h = hash & 15; const u = h<8?x:y; const v = h<4?y:(h===12||h===14)?x:0; return ((h&1)===0?u:-u)+((h&2)===0?v:-v); }
+    noise(x,y){ const X=Math.floor(x)&255; const Y=Math.floor(y)&255; x-=Math.floor(x); y-=Math.floor(y); const u=this.fade(x); const v=this.fade(y); const A=this.p[X]+Y; const B=this.p[X+1]+Y; return this.lerp(v,this.lerp(u,this.grad(this.p[A],x,y),this.grad(this.p[B],x-1,y)),this.lerp(u,this.grad(this.p[A+1],x,y-1),this.grad(this.p[B+1],x-1,y-1))); }
 }
-
 const perlin = new Perlin();
 
-// =============================
-// ORGANICKÉ MÍCHANÍ 2 PNG
-// =============================
-function mixTwoTextures() {
-    const out = ctx.createImageData(w, h);
+// ==========================
+// LOAD IMAGES
+// ==========================
+async function loadImage(img){
+    return new Promise(resolve=>{
+        if(img.complete) resolve();
+        else img.onload = resolve;
+    });
+}
+
+// ==========================
+// PARSE GPS
+// ==========================
+const coordsInput = document.getElementById("coords-input");
+function getOffsetsFromGPS(){
+    const val = coordsInput.value.trim();
+    const match = val.match(/([0-9.+-]+)[^\d]+([0-9.+-]+)/);
+    if(!match) return {ox:0, oy:0};
+    const lat = parseFloat(match[1]);
+    const lon = parseFloat(match[2]);
+    return {ox: lat*10, oy: lon*10}; // vynásobíme pro výraznější efekt
+}
+
+// ==========================
+// MIX TEXTURES + GPS
+// ==========================
+function mixTwoTexturesWithGPS(imgA,imgB){
+    const out = ctx.createImageData(w,h);
     const d = out.data;
+    const offsets = getOffsetsFromGPS();
 
-    // buffer pro mix
-    bctx.clearRect(0, 0, w, h);
+    bctx.clearRect(0,0,w,h);
+    bctx.drawImage(imgA,0,0,w,h);
+    const A = bctx.getImageData(0,0,w,h);
 
-    // načteme oba PNG do paměti
-    bctx.drawImage(imgA, 0, 0, w, h);
-    const A = bctx.getImageData(0, 0, w, h);
+    bctx.clearRect(0,0,w,h);
+    bctx.drawImage(imgB,0,0,w,h);
+    const B = bctx.getImageData(0,0,w,h);
 
-    bctx.clearRect(0, 0, w, h);
-    bctx.drawImage(imgB, 0, 0, w, h);
-    const B = bctx.getImageData(0, 0, w, h);
+    const deformScale = 0.015;
+    const chunkChaos = 0.6;
+    const blurNoise = 0.012;
 
-    const deformScale = 0.015;     
-    const chunkChaos = 0.6;        
-    const blurNoise = 0.012;       
+    for(let y=0;y<h;y++){
+        for(let x=0;x<w;x++){
+            const i=(y*w+x)*4;
+            const jump=Math.abs(perlin.noise(x*chunkChaos+offsets.ox, y*chunkChaos+offsets.oy));
+            const dx=perlin.noise(x*deformScale+offsets.ox, y*deformScale+offsets.oy)*40;
+            const dy=perlin.noise(x*deformScale+200+offsets.ox, y*deformScale+200+offsets.oy)*40;
 
-    for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-            const i = (y * w + x) * 4;
+            let xx=Math.floor((x+dx+w)%w);
+            let yy=Math.floor((y+dy+h)%h);
+            let j=(yy*w+xx)*4;
 
-            const jump = Math.abs(perlin.noise(x * chunkChaos, y * chunkChaos));
+            const src = jump>0.5 ? A.data : B.data;
+            const gray=(src[j]+src[j+1]+src[j+2])/3;
+            const soften=Math.max(0,(perlin.noise(x*blurNoise+offsets.ox, y*blurNoise+offsets.oy)+1)*0.5);
 
-            const dx = perlin.noise(x * deformScale, y * deformScale) * 40;
-            const dy = perlin.noise(x * deformScale + 200, y * deformScale + 200) * 40;
-
-            let xx = Math.floor((x + dx + w) % w);
-            let yy = Math.floor((y + dy + h) % h);
-            let j = (yy * w + xx) * 4;
-
-            const src = jump > 0.5 ? A.data : B.data;
-
-            const gray = (src[j] + src[j + 1] + src[j + 2]) / 3;
-
-            const soften = Math.max(0, (perlin.noise(x * blurNoise, y * blurNoise) + 1) * 0.5);
-
-            d[i] = d[i + 1] = d[i + 2] = gray * soften;
-            d[i + 3] = 255 * soften; 
+            d[i]=d[i+1]=d[i+2]=gray*soften;
+            d[i+3]=255*soften;
         }
     }
 
-    ctx.putImageData(out, 0, 0);
+    ctx.putImageData(out,0,0);
 }
 
-// počkáme, až jsou oba obrázky načtené
-function tryMix() {
-    if (imgA.complete && imgB.complete) {
-        mixTwoTextures();
-    }
+// ==========================
+// INIT
+// ==========================
+async function initMix(){
+    const imgA = document.getElementById("imgA");
+    const imgB = document.getElementById("imgB");
+    await loadImage(imgA);
+    await loadImage(imgB);
+    mixTwoTexturesWithGPS(imgA,imgB);
 }
 
-imgA.onload = tryMix;
-imgB.onload = tryMix;
+// Reakce na změnu GPS
+coordsInput.addEventListener("input", () => {
+    const imgA = document.getElementById("imgA");
+    const imgB = document.getElementById("imgB");
+    mixTwoTexturesWithGPS(imgA,imgB);
+});
+
+initMix();
