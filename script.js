@@ -1,35 +1,30 @@
-<script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.155.0/examples/js/controls/OrbitControls.js"></script>
-<canvas id="canvas"></canvas>
-<input id="coords-input" placeholder="GPS (lat, lon)" />
-
-<script>
+// ==========================
+// INIT
+// ==========================
 const canvas = document.getElementById("canvas");
 const w = window.innerWidth;
 const h = window.innerHeight;
 
-// Renderer
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
 renderer.setSize(w,h);
 
-// Scéna a kamera
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x111111);
+
 const camera = new THREE.PerspectiveCamera(45, w/h, 0.1, 1000);
 camera.position.z = 5;
 
-// OrbitControls pro otáčení
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-// Světlo
 const light = new THREE.AmbientLight(0xffffff, 1);
 scene.add(light);
 
 // ==========================
-// PERLIN
-class Perlin{
-    constructor(){
+// PERLIN NOISE
+// ==========================
+class Perlin {
+    constructor() {
         this.p = new Array(512);
         this.permutation = [151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,
         30,69,142,8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,
@@ -53,31 +48,32 @@ class Perlin{
 const perlin = new Perlin();
 
 // ==========================
-// GEOMETRY (Cube s 8 vrcholy)
-let geom = new THREE.BoxGeometry(2,2,2,1,1,1);
-geom = new THREE.BufferGeometry().fromGeometry(geom); // modern BufferGeometry
+// GEOMETRY
+// ==========================
+const geom = new THREE.BoxGeometry(2,2,2,1,1,1);
 const material = new THREE.MeshStandardMaterial({color:0x00ffdd, flatShading:false});
 const mesh = new THREE.Mesh(geom, material);
 scene.add(mesh);
 
-// Uložíme původní vrcholy
 const originalPositions = geom.attributes.position.array.slice();
 
 // ==========================
-// GPS input
+// GPS INPUT
+// ==========================
 const coordsInput = document.getElementById("coords-input");
-function getOffsetsFromGPS(){
+function getOffsetsFromGPS() {
     const val = coordsInput.value.trim();
     const match = val.match(/([0-9.+-]+)[^\d]+([0-9.+-]+)/);
     if(!match) return {ox:0, oy:0};
-    const lat=parseFloat(match[1]);
-    const lon=parseFloat(match[2]);
+    const lat = parseFloat(match[1]);
+    const lon = parseFloat(match[2]);
     return {ox:lat, oy:lon};
 }
 
 // ==========================
 // DEFORMACE MESH
-function deformMesh(){
+// ==========================
+function deformMesh() {
     const offsets = getOffsetsFromGPS();
     const pos = geom.attributes.position.array;
     for(let i=0;i<pos.length;i+=3){
@@ -88,18 +84,18 @@ function deformMesh(){
         pos[i+2] = originalPositions[i+2] + perlin.noise(i*0.3+ox, i*0.3+oy)*0.5;
     }
     geom.attributes.position.needsUpdate = true;
-    geom.computeVertexNormals(); // vyhlazení
+    geom.computeVertexNormals();
 }
 
 // ==========================
 // ANIMACE
+// ==========================
 function animate(){
     requestAnimationFrame(animate);
     controls.update();
     deformMesh();
     mesh.rotation.y += 0.01;
-    renderer.render(scene,camera);
+    renderer.render(scene, camera);
 }
 
 animate();
-</script>
