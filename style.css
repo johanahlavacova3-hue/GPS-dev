@@ -1,6 +1,6 @@
 body {
     margin: 0;
-    overflow: hidden; /* Zajišťuje, že se nebude rolovat */
+    overflow: hidden; /* Zajišťuje, že se nebude rol ovat */
     background-color: #000000;
     color: #fff;
     font-family: 'Geist Mono', monospace;
