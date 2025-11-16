@@ -1,29 +1,32 @@
-<!-- index.html -->
-<!doctype html>
-<html lang="cs">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Deformující kostka</title>
-<link rel="stylesheet" href="styles.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS-Based Random Image Generator</title>
+    <style>
+        body { display: flex; flex-direction: column; align-items: center; }
+        canvas { border: 1px solid black; margin-top: 20px; }
+    </style>
 </head>
 <body>
-<div id="app">
-<div id="canvas-wrap">
-<div id="ui">
-<h3>Deformace kostky</h3>
-<label>Intenzita deformace <span id="ampVal">0.25</span></label>
-<input id="amp" type="range" min="0" max="1" step="0.01" value="0.25">
-<label>Počet subdivizí (smooth)</label>
-<input id="subdiv" type="range" min="0" max="4" step="1" value="2">
-<button id="randomize">Náhodně deformovat</button>
-<button id="applySkin">Aplikovat skin</button>
-<button id="smooth">Aplikovat smooth</button>
-<button id="reset">Reset</button>
-</div>
-<div id="credit">Myš: otáčet, kolečko: zoom, pravé tlačítko: posun</div>
-</div>
-</div>
-<script type="module" src="main.js"></script>
+    <h1>Generate Image from GPS Coordinates</h1>
+    <input type="number" id="lat" placeholder="Latitude (e.g., 50.0755)" step="0.0001">
+    <input type="number" id="lon" placeholder="Longitude (e.g., 14.4378)" step="0.0001">
+    <button onclick="generateImage()">Generate</button>
+    <canvas id="myCanvas" width="400" height="400"></canvas>
+
+    <script src="generate-image.js"></script>
+    <script>
+        function generateImage() {
+            const lat = parseFloat(document.getElementById('lat').value);
+            const lon = parseFloat(document.getElementById('lon').value);
+            if (!isNaN(lat) && !isNaN(lon)) {
+                generateCentralObject(lat, lon);
+            } else {
+                alert('Please enter valid latitude and longitude.');
+            }
+        }
+    </script>
 </body>
 </html>
