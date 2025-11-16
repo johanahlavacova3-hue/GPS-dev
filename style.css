@@ -30,7 +30,7 @@ canvas#c {
 #right-ui-block {
     position: absolute;
     top: 60px; /* Stejná horní pozice jako okno s meshem */
-    left: 1360px; /* 1320px (šířka okna) + 20px (odsazení) + 20px (odsazení od bloku GRPW) = cca 1360px. */
+    left: 1760px; /* 1320px (šířka okna) + 20px (odsazení) + 20px (odsazení od bloku GRPW) = cca 1360px. */
     width: 300px; /* Pevná šířka pro UI prvky */
     text-align: right;
 }
