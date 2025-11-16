@@ -1,9 +1,12 @@
-// ==========================
-// CANVAS 3D s Three.js
-// ==========================
+<script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.155.0/examples/js/controls/OrbitControls.js"></script>
+<canvas id="canvas"></canvas>
+<input id="coords-input" placeholder="GPS (lat, lon)" />
+
+<script>
 const canvas = document.getElementById("canvas");
-const w = canvas.width;
-const h = canvas.height;
+const w = window.innerWidth;
+const h = window.innerHeight;
 
 // Renderer
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
@@ -11,17 +14,21 @@ renderer.setSize(w,h);
 
 // Scéna a kamera
 const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x111111);
 const camera = new THREE.PerspectiveCamera(45, w/h, 0.1, 1000);
-camera.position.z = 3;
+camera.position.z = 5;
+
+// OrbitControls pro otáčení
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
 
 // Světlo
-const ambientLight = new THREE.AmbientLight(0xffffff, 1);
-scene.add(ambientLight);
+const light = new THREE.AmbientLight(0xffffff, 1);
+scene.add(light);
 
 // ==========================
-// PERLIN NOISE
-// ==========================
-class Perlin {
+// PERLIN
+class Perlin{
     constructor(){
         this.p = new Array(512);
         this.permutation = [151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,
@@ -40,108 +47,59 @@ class Perlin {
     }
     fade(t){ return t*t*t*(t*(t*6-15)+10); }
     lerp(t,a,b){ return a+t*(b-a); }
-    grad(hash,x,y){ const h=hash&15; const u=h<8?x:y; const v=h<4?y:(h===12||h===14)?x:0; return ((h&1)===0?u:-u)+((h&2)===0?v:-v); }
-    noise(x,y){ const X=Math.floor(x)&255; const Y=Math.floor(y)&255; x-=Math.floor(x); y-=Math.floor(y); const u=this.fade(x); const v=this.fade(y); const A=this.p[X]+Y; const B=this.p[X+1]+Y; return this.lerp(v,this.lerp(u,this.grad(this.p[A],x,y),this.grad(this.p[B],x-1,y)),this.lerp(u,this.grad(this.p[A+1],x,y-1),this.grad(this.p[B+1],x-1,y-1))); }
+    grad(hash,x,y,z=0){ const h=hash&15; const u=h<8?x:y; const v=h<4?y:(h===12||h===14)?x:z; return ((h&1)===0?u:-u)+((h&2)===0?v:-v); }
+    noise(x,y,z=0){ const X=Math.floor(x)&255; const Y=Math.floor(y)&255; const Z=Math.floor(z)&255; x-=Math.floor(x); y-=Math.floor(y); z-=Math.floor(z); const u=this.fade(x); const v=this.fade(y); const w=this.fade(z); const A=this.p[X]+Y; const AA=this.p[A]+Z; const AB=this.p[A+1]+Z; const B=this.p[X+1]+Y; const BA=this.p[B]+Z; const BB=this.p[B+1]+Z; return this.lerp(w, this.lerp(v, this.lerp(u,this.grad(this.p[AA],x,y,z), this.grad(this.p[BA],x-1,y,z)), this.lerp(u,this.grad(this.p[AB],x,y-1,z), this.grad(this.p[BB],x-1,y-1,z))),0.0); }
 }
 const perlin = new Perlin();
 
 // ==========================
-// CANVAS TEXTURA
+// GEOMETRY (Cube s 8 vrcholy)
+let geom = new THREE.BoxGeometry(2,2,2,1,1,1);
+geom = new THREE.BufferGeometry().fromGeometry(geom); // modern BufferGeometry
+const material = new THREE.MeshStandardMaterial({color:0x00ffdd, flatShading:false});
+const mesh = new THREE.Mesh(geom, material);
+scene.add(mesh);
+
+// Uložíme původní vrcholy
+const originalPositions = geom.attributes.position.array.slice();
+
 // ==========================
-const mixCanvas = document.createElement("canvas");
-mixCanvas.width = 1024;
-mixCanvas.height = 1024;
-const mixCtx = mixCanvas.getContext("2d");
-
-const imgA = document.getElementById("imgA");
-const imgB = document.getElementById("imgB");
+// GPS input
 const coordsInput = document.getElementById("coords-input");
-
 function getOffsetsFromGPS(){
     const val = coordsInput.value.trim();
     const match = val.match(/([0-9.+-]+)[^\d]+([0-9.+-]+)/);
     if(!match) return {ox:0, oy:0};
     const lat=parseFloat(match[1]);
     const lon=parseFloat(match[2]);
-    return {ox:lat*10, oy:lon*10};
+    return {ox:lat, oy:lon};
 }
 
-// Mix logika
-function mixTexturesToCanvas(){
-    const w=mixCanvas.width, h=mixCanvas.height;
+// ==========================
+// DEFORMACE MESH
+function deformMesh(){
     const offsets = getOffsetsFromGPS();
-
-    mixCtx.clearRect(0,0,w,h);
-    mixCtx.drawImage(imgA,0,0,w,h);
-    const A = mixCtx.getImageData(0,0,w,h);
-
-    mixCtx.clearRect(0,0,w,h);
-    mixCtx.drawImage(imgB,0,0,w,h);
-    const B = mixCtx.getImageData(0,0,w,h);
-
-    const out = mixCtx.createImageData(w,h);
-    const d = out.data;
-    const deformScale=0.015, chunkChaos=0.6, blurNoise=0.012;
-
-    for(let y=0;y<h;y++){
-        for(let x=0;x<w;x++){
-            const i=(y*w+x)*4;
-            const jump=Math.abs(perlin.noise(x*chunkChaos+offsets.ox, y*chunkChaos+offsets.oy));
-            const dx=perlin.noise(x*deformScale+offsets.ox, y*deformScale+offsets.oy)*40;
-            const dy=perlin.noise(x*deformScale+200+offsets.ox, y*deformScale+200+offsets.oy)*40;
-
-            let xx=Math.floor((x+dx+w)%w);
-            let yy=Math.floor((y+dy+h)%h);
-            let j=(yy*w+xx)*4;
-
-            const src = jump>0.5 ? A.data : B.data;
-            const gray=(src[j]+src[j+1]+src[j+2])/3;
-            const soften=Math.max(0,(perlin.noise(x*blurNoise+offsets.ox, y*blurNoise+offsets.oy)+1)*0.5);
-
-            d[i]=d[i+1]=d[i+2]=gray*soften;
-            d[i+3]=255*soften;
-        }
+    const pos = geom.attributes.position.array;
+    for(let i=0;i<pos.length;i+=3){
+        const ox = offsets.ox*0.1;
+        const oy = offsets.oy*0.1;
+        pos[i]   = originalPositions[i] + perlin.noise(i*0.1+ox, i*0.1+oy)*0.5;
+        pos[i+1] = originalPositions[i+1] + perlin.noise(i*0.2+ox, i*0.2+oy)*0.5;
+        pos[i+2] = originalPositions[i+2] + perlin.noise(i*0.3+ox, i*0.3+oy)*0.5;
     }
-    mixCtx.putImageData(out,0,0);
+    geom.attributes.position.needsUpdate = true;
+    geom.computeVertexNormals(); // vyhlazení
 }
 
 // ==========================
-// 3D SPHERE
-// ==========================
-const geometry = new THREE.SphereGeometry(1,128,128);
-let texture = new THREE.CanvasTexture(mixCanvas);
-const material = new THREE.MeshStandardMaterial({map:texture, roughness:0.5, metalness:0.2});
-const sphere = new THREE.Mesh(geometry, material);
-scene.add(sphere);
-
-// GPS update
-coordsInput.addEventListener("input", ()=>{
-    mixTexturesToCanvas();
-    texture.needsUpdate=true;
-});
-
-// ==========================
-// INIT + ANIMATION
-// ==========================
-function init(){
-    if(imgA.complete && imgB.complete){
-        mixTexturesToCanvas();
-        texture.needsUpdate=true;
-        animate();
-    } else {
-        imgA.onload = imgB.onload = ()=>{
-            mixTexturesToCanvas();
-            texture.needsUpdate=true;
-            animate();
-        }
-    }
-}
-
+// ANIMACE
 function animate(){
     requestAnimationFrame(animate);
-    sphere.rotation.y += 0.01;
-    sphere.rotation.x += 0.005;
+    controls.update();
+    deformMesh();
+    mesh.rotation.y += 0.01;
     renderer.render(scene,camera);
 }
 
-init();
+animate();
+</script>
