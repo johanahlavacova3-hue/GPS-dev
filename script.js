@@ -4,21 +4,40 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { FilmPass } from 'three/addons/postprocessing/FilmPass.js';
 
-// ---- ZÁKLADNÍ NASTAVENÍ (Beze změny) ----
-const UI_CANVAS_WIDTH = 1320;
-const UI_CANVAS_HEIGHT = 1000;
+// ---- GLOBÁLNÍ STAV A KONSTANTY ----
+
+let baseLat = 0.5; // Základní souřadnice z GPS inputu
+let baseLon = 0.5;
+let offsetLat = 0; // Posun z joysticku
+let offsetLon = 0;
+
+// Konstanta pro přepočet 5m na desetinný stupeň (přibližně)
+// 5m pro šířku (Lat) ~ 0.00004500°
+const METER_TO_DEGREE_LAT = 0.000045; 
+// 5m pro délku (Lon) ~ 0.000071° (závisí na poloze, ale pro demo OK)
+const METER_TO_DEGREE_LON = 0.000071; 
+
+
+// ---- ZÁKLADNÍ NASTAVENÍ SCÉNY ----
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, UI_CANVAS_WIDTH / UI_CANVAS_HEIGHT, 0.1, 1000);
+const canvas = document.querySelector('#c');
+const gpsInput = document.querySelector('#gps-input');
+const currentCoordsDisplay = document.querySelector('#current-coords');
+
+// POUZE pro inicializaci (responzivita se řeší v resize handleru)
+const initialWidth = canvas.clientWidth || 1000;
+const initialHeight = canvas.clientHeight || 1000;
+
+const camera = new THREE.PerspectiveCamera(75, initialWidth / initialHeight, 0.1, 1000);
 camera.position.z = 15; 
 
-const canvas = document.querySelector('#c');
 const renderer = new THREE.WebGLRenderer({ 
     canvas: canvas,
     antialias: true 
 });
 
-renderer.setSize(UI_CANVAS_WIDTH, UI_CANVAS_HEIGHT);
+renderer.setSize(initialWidth, initialHeight);
 renderer.setClearColor(0x000000); 
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.2; 
@@ -26,44 +45,34 @@ renderer.toneMappingExposure = 1.2;
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; 
 
-// ---- POST-PROCESSING (Beze změny) ----
+// ---- POST-PROCESSING ----
 const composer = new EffectComposer(renderer);
 const renderPass = new RenderPass(scene, camera);
 composer.addPass(renderPass);
 
-const filmPass = new FilmPass(
-    0.7,   // Intenzita zrna (šumu)
-    0.025, // Intenzita rušení
-    648,   // Frekvence šumu
-    false  
-);
+const filmPass = new FilmPass(0.7, 0.025, 648, false);
 composer.addPass(filmPass);
 
-// ---- SVĚTLA (Beze změny) ----
+// ---- SVĚTLA ----
 const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
 scene.add(ambientLight);
 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 5.0);
-directionalLight.position.set(5, 10, 7.5);
+directionalLight.position.set(5, 10, 7.7);
 scene.add(directionalLight);
 
 
-// ---- POMOCNÁ FUNKCE: Deterministický náhodný generátor (Beze změny) ----
+// ---- POMOCNÁ FUNKCE: Deterministický náhodný generátor ----
 let seed = 1;
 function seededRandom() {
     const x = Math.sin(seed++) * 10000;
     return x - Math.floor(x);
 }
 
-// ---- GENERÁTOR TVARU S VAZBOU NA GPS (KLÍČOVÉ ZMĚNY) ----
+// ---- GENERÁTOR TVARU S VAZBOU NA GPS ----
 
 let currentShape = null; 
 
-/**
- * Generuje 3D tvar s vysokou komplexitou pro vazbu.
- * @param {number} seedX Seed z délky (např. 49.567)
- * @param {number} seedY Seed ze šířky (např. 16.000)
- */
 function generateRandomShape(seedX = 0.5, seedY = 0.5) {
     if (currentShape) {
         scene.remove(currentShape);
@@ -71,13 +80,13 @@ function generateRandomShape(seedX = 0.5, seedY = 0.5) {
         currentShape.material.dispose();
     }
     
+    // Nastavení seedu
     seed = Math.floor((seedX + seedY) * 100000);
 
-    // 2. Body pro KOMPLEXNĚJŠÍ TVAR
+    // Generování složité křivky
     const points = [];
     let currentPos = new THREE.Vector3(0, 0, 0);
 
-    // ZMĚNA: Více uzlů (40 místo 20) pro složitější křivku
     for (let i = 0; i < 40; i++) { 
         const randomDirection = new THREE.Vector3(
             (seededRandom() - 0.5) * 2,
@@ -85,33 +94,29 @@ function generateRandomShape(seedX = 0.5, seedY = 0.5) {
             (seededRandom() - 0.5) * 2
         ).normalize(); 
 
-        // ZMĚNA: Delší kroky (větší rozptyl) pro volnější vazbu a křížení
         const randomLength = seededRandom() * 4 + 2; 
         currentPos.add(randomDirection.multiplyScalar(randomLength));
         points.push(currentPos.clone());
     }
 
-    // 3. Křivka
     const curve = new THREE.CatmullRomCurve3(points, true, 'catmullrom', 0.5);
 
-    // 4. Geometrie trubice 
+    // Geometrie tenké propletené trubice
     const tubeGeometry = new THREE.TubeGeometry(
         curve, 
         400, 
-        // ZMĚNA: Tenčí roura (rádius 0.8 místo 2.0) pro jemnější strukturu
         0.8,  
         32,   
         true
     );
 
-    // 5. Matný materiál (beze změny)
+    // Matný materiál
     const solidMaterial = new THREE.MeshStandardMaterial({
         color: 0xffffff,        
         roughness: 0.8,         
         metalness: 0.0,         
     });
 
-    // 6. Finální objekt
     currentShape = new THREE.Mesh(tubeGeometry, solidMaterial);
     
     currentShape.rotation.set(
@@ -123,31 +128,73 @@ function generateRandomShape(seedX = 0.5, seedY = 0.5) {
     scene.add(currentShape);
 }
 
-// ---- PARSOVÁNÍ GPS VSTUPU (Beze změny) ----
-const gpsInput = document.querySelector('#gps-input');
+// ---- GPS LOGIKA: PARSE & GENERATE ----
 
-function parseAndGenerate(value) {
+function runGeneration() {
+    // Kombinace základní GPS a offsetu z joysticku
+    const finalLat = baseLat + offsetLat;
+    const finalLon = baseLon + offsetLon;
+    
+    // Zobrazení aktuálních hodnot v UI (důležité pro vizuální feedback)
+    currentCoordsDisplay.innerHTML = 
+        `Lat: ${finalLat.toFixed(8)}<br>Lon: ${finalLon.toFixed(8)}`;
+    
+    generateRandomShape(finalLat, finalLon);
+}
+
+
+function parseBaseGps(value) {
     const cleanValue = value.replace(/[a-zA-Z\s]/g, '');
     const parts = cleanValue.split(/[,;]/);
-
+    
     if (parts.length >= 2) {
         const lat = parseFloat(parts[0]);
         const lon = parseFloat(parts[1]);
 
         if (!isNaN(lat) && !isNaN(lon)) {
-            generateRandomShape(lat, lon);
-            console.log(`Vygenerován tvar podle GPS: ${lat}, ${lon}`);
+            // Nastavujeme základní hodnoty (base) a vynulujeme offset
+            baseLat = lat;
+            baseLon = lon;
+            offsetLat = 0; 
+            offsetLon = 0; 
+            runGeneration();
             return;
         }
     }
-    generateRandomShape(0.5, 0.5); 
+    // Neplatný nebo prázdný vstup: použijeme default
+    baseLat = 0.5;
+    baseLon = 0.5;
+    offsetLat = 0; 
+    offsetLon = 0; 
+    runGeneration();
 }
 
+// --- LISTENERY ---
+
+// Vstupní pole: nastavení základní GPS
 gpsInput.addEventListener('change', (e) => {
-    parseAndGenerate(e.target.value);
+    parseBaseGps(e.target.value);
 });
 
-// ---- ANIMAČNÍ SMYČKA (Beze změny) ----
+
+// Joystick: Inkrementální posun souřadnic
+document.querySelector('#joystick-container').addEventListener('click', (e) => {
+    const button = e.target.closest('button');
+    if (!button) return;
+
+    const direction = button.dataset.dir; // 'lat' nebo 'lon'
+    const value = parseInt(button.dataset.val); // 1 (plus) nebo -1 (minus)
+    
+    if (direction === 'lat') {
+        offsetLat += value * METER_TO_DEGREE_LAT;
+    } else if (direction === 'lon') {
+        offsetLon += value * METER_TO_DEGREE_LON;
+    }
+    
+    runGeneration();
+});
+
+// ---- ANIMAČNÍ SMYČKA ----
 
 function animate() {
     requestAnimationFrame(animate); 
@@ -158,16 +205,26 @@ function animate() {
     }
 
     controls.update(); 
+    renderer.clear(); // Zajištění správného vykreslení
     composer.render(); 
 }
 
-// ---- SPUŠTĚNÍ (Beze změny) ----
+// ---- SPUŠTĚNÍ & RESIZE ----
 
-parseAndGenerate(gpsInput.value || '0.5, 0.5'); 
+// Inicializace na default hodnotách
+parseBaseGps(gpsInput.value || '0.5, 0.5'); 
 
+// Obsluha responzivního resize
 window.addEventListener('resize', () => {
-    renderer.setSize(UI_CANVAS_WIDTH, UI_CANVAS_HEIGHT);
-    composer.setSize(UI_CANVAS_WIDTH, UI_CANVAS_HEIGHT); 
+    // Získáváme aktuální rozměry z HTML/CSS, které jsou responzivní
+    const newWidth = canvas.clientWidth;
+    const newHeight = canvas.clientHeight;
+
+    camera.aspect = newWidth / newHeight;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(newWidth, newHeight);
+    composer.setSize(newWidth, newHeight); 
 });
 
 animate();
