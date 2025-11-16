@@ -4,18 +4,19 @@
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
+// synchronizace velikosti s HTML
+const w = canvas.width;
+const h = canvas.height;
+
 // Dvě textury (PNG) – v HTML musíš mít <img id="imgA"> a <img id="imgB">
 const imgA = document.getElementById("imgA");
 const imgB = document.getElementById("imgB");
 
-// Místo kde se bude mixovat – používáme dočasný buffer
+// Buffer pro mix
 const buffer = document.createElement("canvas");
+buffer.width = w;
+buffer.height = h;
 const bctx = buffer.getContext("2d");
-
-canvas.width = 800;
-canvas.height = 800;
-buffer.width = 800;
-buffer.height = 800;
 
 // ==========================
 // PERLIN NOISE
@@ -76,13 +77,13 @@ const perlin = new Perlin();
 // ORGANICKÉ MÍCHANÍ 2 PNG
 // =============================
 function mixTwoTextures() {
-    const w = canvas.width;
-    const h = canvas.height;
+    const out = ctx.createImageData(w, h);
+    const d = out.data;
 
     // buffer pro mix
     bctx.clearRect(0, 0, w, h);
 
-    // nahrajeme oba PNG do paměti
+    // načteme oba PNG do paměti
     bctx.drawImage(imgA, 0, 0, w, h);
     const A = bctx.getImageData(0, 0, w, h);
 
@@ -90,51 +91,43 @@ function mixTwoTextures() {
     bctx.drawImage(imgB, 0, 0, w, h);
     const B = bctx.getImageData(0, 0, w, h);
 
-    const out = ctx.createImageData(w, h);
-    const d = out.data;
-
-    const deformScale = 0.015;     // Zvýšíš → výraznější organická deformace
-    const chunkChaos = 0.6;        // Zvýšíš → víc náhodných skoků mezi texturami
-    const blurNoise = 0.012;       // Zvýšíš → měkčí okraje, víc mlhy
+    const deformScale = 0.015;     
+    const chunkChaos = 0.6;        
+    const blurNoise = 0.012;       
 
     for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
-
             const i = (y * w + x) * 4;
 
-            // náhodné přeskakování mezi obrázky
             const jump = Math.abs(perlin.noise(x * chunkChaos, y * chunkChaos));
 
-            // organická deformace souřadnic
             const dx = perlin.noise(x * deformScale, y * deformScale) * 40;
             const dy = perlin.noise(x * deformScale + 200, y * deformScale + 200) * 40;
 
-            // index s posunem
             let xx = Math.floor((x + dx + w) % w);
             let yy = Math.floor((y + dy + h) % h);
             let j = (yy * w + xx) * 4;
 
-            // výběr mezi textura A / B
             const src = jump > 0.5 ? A.data : B.data;
 
-            // grayscale
             const gray = (src[j] + src[j + 1] + src[j + 2]) / 3;
 
-            // noise rozmazání a hrany měkké jak masa
-            const soften = (perlin.noise(x * blurNoise, y * blurNoise) + 1) * 0.5;
+            const soften = Math.max(0, (perlin.noise(x * blurNoise, y * blurNoise) + 1) * 0.5);
 
             d[i] = d[i + 1] = d[i + 2] = gray * soften;
-            d[i + 3] = 255 * soften; // alpha softness
+            d[i + 3] = 255 * soften; 
         }
     }
 
     ctx.putImageData(out, 0, 0);
 }
 
-// čekáme na načtení obrázků
-imgA.onload = () => {
-    if (imgB.complete) mixTwoTextures();
-};
-imgB.onload = () => {
-    if (imgA.complete) mixTwoTextures();
-};
+// počkáme, až jsou oba obrázky načtené
+function tryMix() {
+    if (imgA.complete && imgB.complete) {
+        mixTwoTextures();
+    }
+}
+
+imgA.onload = tryMix;
+imgB.onload = tryMix;
