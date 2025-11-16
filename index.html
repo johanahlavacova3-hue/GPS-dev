@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPS-004</title>
+    <title>GRPW-023: GPS Generátor</title>
     <link rel="stylesheet" href="style.css">
     
     <link href="https://fonts.googleapis.com/css2?family=Geist+Mono&display=swap" rel="stylesheet">
@@ -31,7 +31,20 @@
         <div id="coords-label">x=1360 y=60</div>
         
         <input type="text" id="gps-input" placeholder="např: 49.5674321, 16.0009999">
-        <div id="gps-hint">Zadejte souřadnice (číslo, číslo)</div>
+        <div id="gps-hint">Zadejte základní souřadnice (číslo, číslo)</div>
+
+        <div id="joystick-container">
+            <h3>Jemná úprava (± 5m)</h3>
+            <div id="joystick-grid">
+                <button id="up-btn" data-dir="lat" data-val="1">▲</button>
+                <div>
+                    <button id="left-btn" data-dir="lon" data-val="-1">◀</button>
+                    <button id="right-btn" data-dir="lon" data-val="1">▶</button>
+                </div>
+                <button id="down-btn" data-dir="lat" data-val="-1">▼</button>
+            </div>
+            <div id="current-coords"></div>
+        </div>
     </div>
     
     <script type="module" src="script.js"></script>
