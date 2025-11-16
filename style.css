@@ -10,7 +10,6 @@ body {
 
 /* ------------------------------------------- */
 /* 1. Rozvržení pro Desktop / Větší tablety (> 1000px) */
-/* Rozdělíme plochu pomocí Flexboxu */
 /* ------------------------------------------- */
 
 /* Levý sloupec pro EXPLORE a Canvas */
@@ -31,37 +30,36 @@ body {
     justify-content: flex-start;
     padding: 60px 20px 20px 20px;
     box-sizing: border-box;
-    text-align: right; /* Text vpravo */
-    position: relative; /* Pro absolutní pozici GRPW/coords */
+    text-align: right; 
+    position: relative; 
+    gap: 15px; /* Mezery mezi UI prvky */
 }
 
 /* 3D KANVAS - Responzivní, vyplní celou levou oblast */
 canvas#c {
     position: absolute;
-    /* top, right, bottom, left 0, aby vyplnilo #left-area */
     top: 60px; /* Ponecháme prostor pro EXPLORE */
     right: 20px;
     bottom: 20px;
     left: 20px;
-    width: auto; /* Zrušíme pevnou šířku */
-    height: auto; /* Zrušíme pevnou výšku */
+    width: auto; 
+    height: auto; 
     border: 1px solid #333;
 }
 
-/* Nápis EXPLORE (Levý nahoře, relativně k #left-area) */
+/* Nápis EXPLORE */
 #explore-label {
     position: absolute;
     top: 20px;
     left: 20px;
-    font-size: 2.5vw; /* Použijeme viewport width pro velikost písma */
+    font-size: 2.5vw; 
     letter-spacing: 0.5vw;
     font-weight: 500;
 }
 
-
-/* Pravý UI Blok - Textové styly (responzivní) */
+/* Pravý UI Blok - Textové styly */
 #gpw-label {
-    font-size: 8vw; /* Velké písmo v závislosti na šířce viewportu */
+    font-size: 8vw; 
     line-height: 0.9;
     font-weight: 900;
     margin-bottom: 5px;
@@ -73,7 +71,7 @@ canvas#c {
     margin-bottom: 20px;
 }
 
-/* GPS Vstupní pole (responzivní) */
+/* GPS Vstupní pole */
 #gps-input {
     width: 100%;
     padding: 10px;
@@ -83,48 +81,104 @@ canvas#c {
     font-family: 'Geist Mono', monospace;
     font-size: 1.5vw;
     box-sizing: border-box;
+    text-align: right;
 }
 
 #gps-hint {
     font-size: 1vw;
     color: #555;
-    margin-top: 5px;
+    margin-top: -10px; /* Posunout blíž k inputu */
+}
+
+/* --- STYLY JOYSTICKU --- */
+#joystick-container {
+    margin-top: 20px;
+    padding-top: 10px;
+    border-top: 1px solid #333;
+    width: 100%;
+}
+
+#joystick-container h3 {
+    font-size: 1.5vw;
+    font-weight: 500;
+    text-align: right;
+    margin: 0 0 10px 0;
+}
+
+#joystick-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    gap: 5px;
+    max-width: 150px; /* Pevná velikost pro Desktop */
+    margin: 10px 0 10px auto; /* Zarovnání doprava */
+}
+
+#joystick-grid > div {
+    grid-column: 1 / 4; /* Střední řada */
+    display: contents; /* Umožní dětem sedět v gridu */
+}
+
+#up-btn { grid-column: 2 / 3; grid-row: 1 / 2; }
+#down-btn { grid-column: 2 / 3; grid-row: 3 / 4; }
+#left-btn { grid-column: 1 / 2; grid-row: 2 / 3; }
+#right-btn { grid-column: 3 / 4; grid-row: 2 / 3; }
+
+#joystick-grid button {
+    background: #222;
+    color: #fff;
+    border: 1px solid #555;
+    cursor: pointer;
+    font-size: 1.5vw; 
+    line-height: 1;
+    transition: background 0.1s;
+    width: 100%;
+    aspect-ratio: 1 / 1; 
+}
+
+#joystick-grid button:hover {
+    background: #444;
+}
+
+#current-coords {
+    font-size: 1.2vw;
+    text-align: right;
+    color: #0f0; 
+    word-break: break-all;
+    min-height: 2em;
 }
 
 /* ------------------------------------------- */
 /* 2. Media Query pro Mobil na šířku (< 800px) */
-/* V tomto rozvržení umístíme prvky nad sebe */
 /* ------------------------------------------- */
 @media (max-width: 800px) {
     
-    /* Vše se bude skládat vertikálně, body zabere celou šířku */
     body {
         flex-direction: column;
     }
 
-    /* Levé a pravé oblasti změní šířku a výšku na %, aby se vešly */
     #left-area {
         width: 100%;
-        height: 65vh; /* 65% výšky obrazovky pro Canvas */
+        height: 65vh; 
         padding: 10px;
     }
     
     #right-ui-block {
         width: 100%;
-        height: 35vh; /* 35% výšky obrazovky pro UI */
+        height: 35vh; 
         padding: 10px;
-        text-align: left; /* Pro mobil lepší left-align */
+        text-align: left; 
     }
 
-    /* Canvas bude vyplňovat svoji oblast */
+    /* Canvas */
     canvas#c {
-        top: 40px; /* Méně místa pro EXPLORE */
+        top: 40px; 
         right: 10px;
         bottom: 10px;
         left: 10px;
     }
 
-    /* Mobilní velikosti textu (použijeme vh pro lepší čitelnost) */
+    /* Text */
     #explore-label {
         font-size: 4vh;
         letter-spacing: 0.5vh;
@@ -133,7 +187,7 @@ canvas#c {
     }
     
     #gpw-label {
-        font-size: 10vh; 
+        font-size: 10vh;
         line-height: 1;
     }
 
@@ -149,5 +203,24 @@ canvas#c {
 
     #gps-hint {
         font-size: 1.5vh;
+        margin-top: 5px;
+    }
+    
+    /* Joystick pro mobil */
+    #joystick-container h3 {
+        font-size: 2.5vh;
+        text-align: left;
+    }
+
+    #joystick-grid {
+        max-width: 100%; /* Rozšíříme pro lepší klikání na mobilu */
+        margin: 10px 0; /* Zarovnání doleva na mobilu */
+    }
+    #joystick-grid button {
+        font-size: 3vh; /* Velká tlačítka */
+    }
+    #current-coords {
+        font-size: 1.8vh;
+        text-align: left;
     }
 }
