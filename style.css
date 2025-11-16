@@ -1,10 +1,67 @@
 body {
-    margin: 0; /* Odstraní výchozí okraje */
-    overflow: hidden; /* Zabrání posouvání stránky */
+    margin: 0;
+    overflow: hidden;
+    background-color: #000;
+    color: #fff;
+    font-family: 'Geist Mono', monospace; /* Hlavní font */
 }
 
+/* 3D KANVAS - Pevná pozice a rozměry */
 canvas#c {
-    display: block; /* Zajistí, že canvas vyplní prostor */
-    width: 100vw;
-    height: 100vh;
+    position: absolute;
+    width: 1320px; /* Pevná šířka */
+    height: 1000px; /* Pevná výška */
+    top: 60px; /* 60px od shora */
+    right: 20px; /* 20px od pravého okraje */
+    border: 1px solid #333; /* Volitelně pro vizualizaci okna */
+}
+
+/* Nápis EXPLORE (Levý nahoře) */
+#explore-label {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    font-size: 32px; /* 32b */
+    letter-spacing: 5px;
+    font-weight: 500;
+}
+
+/* Pravý UI Blok */
+#right-ui-block {
+    position: absolute;
+    top: 60px; /* Stejná horní pozice jako okno s meshem */
+    right: 1360px; /* 1320px (šířka okna) + 20px (odsazení) + 20px (odsazení od bloku GRPW) = cca 1360px. */
+    width: 300px; /* Pevná šířka pro UI prvky */
+    text-align: right;
+}
+
+#gpw-label {
+    font-size: 96px; /* 96b */
+    line-height: 0.9;
+    font-weight: 900;
+    margin-bottom: 5px;
+}
+
+#coords-label {
+    font-size: 16px;
+    color: #aaa;
+    margin-bottom: 20px;
+}
+
+/* GPS Vstupní pole */
+#gps-input {
+    width: 100%;
+    padding: 10px;
+    background: #111;
+    border: 1px solid #333;
+    color: #fff;
+    font-family: 'Geist Mono', monospace;
+    font-size: 18px;
+    box-sizing: border-box;
+}
+
+#gps-hint {
+    font-size: 12px;
+    color: #555;
+    margin-top: 5px;
 }
