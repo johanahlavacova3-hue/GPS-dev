@@ -54,7 +54,6 @@ canvas#c {
     font-weight: 500;
     z-index: 10; 
     padding: 10px 20px;
-    /* Odebrán background: rgba(0, 0, 0, 0.5); - je viditelný jen nápis */
 }
 
 #gpw-label {
@@ -73,7 +72,7 @@ canvas#c {
 #gps-input {
     width: 100%;
     padding: 10px;
-    background: #000000; /* Změněno na čistě černou */
+    background: #000000; 
     border: 10px solid #3B3B3B;
     color: #fff;
     font-family: 'Geist Mono', monospace;
@@ -90,7 +89,6 @@ canvas#c {
 
 /* --- STYLY KRUHOVÉHO JOYSTICKU --- */
 
-/* Aktuální souřadnice (ZELENÝ NÁPIS NAD JOYSTICKEM) */
 #current-coords {
     font-size: 1.5vw; 
     text-align: right;
@@ -116,18 +114,17 @@ canvas#c {
 }
 
 #joystick-outer {
-    width: 150px; /* Vráceno na 150px x 150px kruh */
+    width: 150px; 
     height: 150px;
-
-    border: 2px solid #262525; /* Rámeček vnějšího kruhu */
+    border: 2px solid #262525; 
     border-radius: 50%;
     margin: 10px 0 10px auto; 
     position: relative;
     overflow: hidden; 
-    cursor: default; /* Přesunuto na handle */
+    cursor: default; 
     touch-action: none;
     
-    background-color: #262525; /* ZMĚNA: Nastaveno na ČERNÉ pozadí */
+    background-color: #000000; /* Změněno z #262525 na čistě černou */
     background-image: linear-gradient(to right, #111 1px, transparent 1px), 
                       linear-gradient(to bottom, #111 1px, transparent 1px);
     background-size: 15px 15px; 
@@ -136,7 +133,6 @@ canvas#c {
     transition: box-shadow 0.1s;
 }
 
-/* Pseudo-element pro ZELENÝ OPAR s šumem */
 #joystick-outer::after {
     content: '';
     position: absolute;
@@ -153,7 +149,6 @@ canvas#c {
 }
 
 #joystick-handle {
-    /* Handle je kulička, která se tahá */
     width: 10px; 
     height: 10px; 
     background: #57F87D; 
@@ -163,12 +158,54 @@ canvas#c {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    cursor: grab; /* ZMĚNA: PŘESUNUTO SEM */
+    cursor: grab; 
     z-index: 10;
     
-    /* KULIČKA JAKO BLUR */
     box-shadow: 0 0 20px #ffffff; 
     filter: blur(15px); 
+    transition: transform 0.2s, left 0.2s, top 0.2s; /* Přidáno pro hladký návrat */
+}
+
+/* --- NOVÉ: STYLY EXPORTNÍCH TLAČÍTEK --- */
+#export-container {
+    margin-top: 30px;
+    border-top: 1px solid #333;
+    padding-top: 20px;
+}
+#export-container h3 {
+    font-size: 1.5vw;
+    font-weight: 500;
+    text-align: right;
+    margin: 0 0 10px 0;
+}
+
+.export-button {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    background: #111;
+    color: #57F87D;
+    border: 1px solid #57F87D;
+    border-radius: 5px;
+    font-family: 'Geist Mono', monospace;
+    font-size: 1.2vw;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+    text-align: center;
+}
+
+.export-button:hover {
+    background: #57F87D;
+    color: #000000;
+    box-shadow: 0 0 10px rgba(87, 248, 125, 0.7);
+}
+
+#export-message {
+    margin-top: 10px;
+    font-size: 0.9vw;
+    color: #57F87D;
+    text-align: right;
+    min-height: 1em;
 }
 
 
@@ -187,7 +224,7 @@ canvas#c {
 
     #explore-label { font-size: 4vh; letter-spacing: 0.5vh; top: 10px; left: 10px; }
     #gpw-label { font-size: 10vh; line-height: 1; }
-    #coords-label { font-size: 2vh; margin-bottom: 10px; }
+    
     #gps-input { font-size: 3vh; padding: 5px; }
     #gps-hint { font-size: 1.5vh; margin-top: 5px; }
     
@@ -207,6 +244,20 @@ canvas#c {
 
     #current-coords {
         font-size: 2.2vh;
+        text-align: left;
+    }
+
+    /* Export tlačítek na mobilu */
+    #export-container h3 {
+        font-size: 2.5vh;
+        text-align: left;
+    }
+    .export-button {
+        font-size: 2vh;
+        margin-top: 5px;
+    }
+    #export-message {
+        font-size: 1.5vh;
         text-align: left;
     }
 }
