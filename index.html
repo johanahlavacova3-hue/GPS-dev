@@ -24,29 +24,22 @@
         <div id="explore-label">EXPLORE</div>
         <canvas id="c"></canvas>
     </div>
-
     <div id="right-ui-block">
         <div id="gpw-label">GPS-04</div>
         
         <input type="text" id="gps-input" placeholder="např: 49.5674321, 16.0009999">
         <div id="gps-hint">Zadejte jakékoliv souřadnice </div>
-
         <div id="joystick-container">
-            <h3>Jemná úprava (Drag)</h3>
             <div id="joystick-outer">
                 <div id="joystick-handle"></div>
             </div>
             <div id="current-coords"></div>
         </div>
-
-        <div id="export-container">
-            <h3>Export modelu</h3>
-            <button id="export-png-button" class="export-button">Stáhnout PNG (průhledné)</button>
-            <button id="export-glb-button" class="export-button">Stáhnout 3D (GLB)</button>
-            <button id="export-stl-button" class="export-button">Stáhnout 3D (STL)</button>
-            <div id="export-message"></div>
+        <div id="download-options">
+            <button id="download-png">Stáhnout jako průhledné PNG</button>
+            <button id="download-stl">Stáhnout jako STL</button>
+            <button id="download-glb">Stáhnout jako GLB</button>
         </div>
-
     </div>
     
     <script type="module" src="script.js"></script>
