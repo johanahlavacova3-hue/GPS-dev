@@ -118,7 +118,8 @@ canvas#c {
 #joystick-outer {
     width: 150px; /* Vráceno na 150px x 150px kruh */
     height: 150px;
-    border: 2px solid #333; /* Rámeček vnějšího kruhu */
+
+    border: 2px solid #262525; /* Rámeček vnějšího kruhu */
     border-radius: 50%;
     margin: 10px 0 10px auto; 
     position: relative;
@@ -126,7 +127,7 @@ canvas#c {
     cursor: default; /* Přesunuto na handle */
     touch-action: none;
     
-    background-color: #000000; /* ZMĚNA: Nastaveno na ČERNÉ pozadí */
+    background-color: #262525; /* ZMĚNA: Nastaveno na ČERNÉ pozadí */
     background-image: linear-gradient(to right, #111 1px, transparent 1px), 
                       linear-gradient(to bottom, #111 1px, transparent 1px);
     background-size: 15px 15px; 
@@ -155,7 +156,7 @@ canvas#c {
     /* Handle je kulička, která se tahá */
     width: 10px; 
     height: 10px; 
-    background: #ffffff; 
+    background: #57F87D; 
     border: none;
     border-radius: 50%;
     position: absolute;
