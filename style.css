@@ -16,7 +16,7 @@ body {
     width: 75%; 
     height: 100vh; 
     position: relative;
-    padding: 0; /* ZMĚNA: Odebrán padding, aby canvas vyplnil 100% */
+    padding: 0; 
     box-sizing: border-box;
 }
 
@@ -35,13 +35,13 @@ body {
 
 canvas#c {
     position: absolute;
-    top: 0; /* ZMĚNA: Vyplňuje od shora */
+    top: 0; 
     right: 0;
     bottom: 0;
     left: 0;
-    width: 100%; /* ZMĚNA: Plná šířka */
-    height: 100%; /* ZMĚNA: Plná výška */
-    border: none; /* Odebereme rámeček, pokud je to 100% okno */
+    width: 100%; 
+    height: 100%; 
+    border: none; 
     box-sizing: border-box; 
 }
 
@@ -52,9 +52,9 @@ canvas#c {
     font-size: 2.5vw; 
     letter-spacing: 0.5vw;
     font-weight: 500;
-    z-index: 10; /* Zajištění viditelnosti nad canvasem */
+    z-index: 10; 
     padding: 10px 20px;
-    background: rgba(0, 0, 0, 0.5); /* Mírné pozadí pro čitelnost */
+    background: rgba(0, 0, 0, 0.5); 
 }
 
 #gpw-label {
@@ -90,15 +90,15 @@ canvas#c {
 
 /* --- STYLY KRUHOVÉHO JOYSTICKU (Fixní handle, dynamická záře) --- */
 
-/* NOVÉ UMÍSTĚNÍ COORDS NAD JOYSTICK */
+/* NOVÉ UMÍSTĚNÍ COORDS NAD JOYSTICK - Tento blok již je v pořádku. */
 #current-coords {
-    font-size: 1.5vw; /* ZVĚTŠENO */
+    font-size: 1.5vw; 
     text-align: right;
-    color: #0f0; 
+    color: #0f0; /* ZELENÝ NÁPIS */
     word-break: break-all;
     min-height: 2em;
     margin-top: 15px;
-    margin-bottom: 10px; /* Přidán spodní okraj */
+    margin-bottom: 10px; 
 }
 
 
@@ -127,9 +127,10 @@ canvas#c {
     touch-action: none;
     
     background-color: #000000;
-    background-image: linear-gradient(to right, #111 1px, transparent 30px), 
+    /* Oprava pozadí na 1px mřížku (pokud byla chyba v předchozím kódu) */
+    background-image: linear-gradient(to right, #111 1px, transparent 1px), 
                       linear-gradient(to bottom, #111 1px, transparent 1px);
-    background-size: 1px 1px; 
+    background-size: 15px 15px; 
     
     box-shadow: 0 0 0 rgba(0, 255, 0, 0); 
     transition: box-shadow 0.1s;
@@ -145,6 +146,8 @@ canvas#c {
     height: 100%;
     border-radius: 50%;
     
+    /* Zpětné přidání noise pozadí */
+    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5QQCDh0j6zH+8AAAAAJKVRYdFjo');
     background-size: 2px 2px;
     opacity: 0.15; 
     pointer-events: none; 
@@ -152,8 +155,8 @@ canvas#c {
 
 #joystick-handle {
     /* Handle zůstává pevně uprostřed */
-    width: 10px; /* ZVĚTŠENO pro lepší blur */
-    height: 10px; /* ZVĚTŠENO pro lepší blur */
+    width: 10px; 
+    height: 10px; 
     background: #ffffff; 
     border: none;
     border-radius: 50%;
@@ -163,8 +166,10 @@ canvas#c {
     transform: translate(-50%, -50%);
     cursor: default; 
     z-index: 10;
-    box-shadow: 0 0 10px #66ff00;
-    filter: blur(30px); /* NOVÉ: PŘIDÁN EFEKT ROZMAZÁNÍ */
+    
+    /* KULIČKA JAKO BLUR: Bílý stín (box-shadow) a silný blur */
+    box-shadow: 0 0 20px #ffffff; /* Silný bílý stín */
+    filter: blur(15px); /* Silné rozmazání kuličky */
 }
 
 
