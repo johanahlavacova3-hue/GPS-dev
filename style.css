@@ -16,7 +16,7 @@ body {
     width: 75%; 
     height: 100vh; 
     position: relative;
-    padding: 20px;
+    padding: 0; /* ZMĚNA: Odebrán padding, aby canvas vyplnil 100% */
     box-sizing: border-box;
 }
 
@@ -35,13 +35,14 @@ body {
 
 canvas#c {
     position: absolute;
-    top: 60px; 
-    right: 20px;
-    bottom: 20px;
-    left: 20px;
-    width: auto; 
-    height: auto; 
-    border: 1px solid #333;
+    top: 0; /* ZMĚNA: Vyplňuje od shora */
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%; /* ZMĚNA: Plná šířka */
+    height: 100%; /* ZMĚNA: Plná výška */
+    border: none; /* Odebereme rámeček, pokud je to 100% okno */
+    box-sizing: border-box; 
 }
 
 #explore-label {
@@ -51,6 +52,9 @@ canvas#c {
     font-size: 2.5vw; 
     letter-spacing: 0.5vw;
     font-weight: 500;
+    z-index: 10; /* Zajištění viditelnosti nad canvasem */
+    padding: 10px 20px;
+    background: rgba(0, 0, 0, 0.5); /* Mírné pozadí pro čitelnost */
 }
 
 #gpw-label {
@@ -85,10 +89,22 @@ canvas#c {
 }
 
 /* --- STYLY KRUHOVÉHO JOYSTICKU (Fixní handle, dynamická záře) --- */
+
+/* NOVÉ UMÍSTĚNÍ COORDS NAD JOYSTICK */
+#current-coords {
+    font-size: 1.5vw; /* ZVĚTŠENO */
+    text-align: right;
+    color: #0f0; 
+    word-break: break-all;
+    min-height: 2em;
+    margin-top: 15px;
+    margin-bottom: 10px; /* Přidán spodní okraj */
+}
+
+
 #joystick-container {
     margin-top: 20px;
     padding-top: 10px;
-    /* ODEBRÁNO: border-top: 1px solid #333; */
     width: 100%;
 }
 
@@ -102,21 +118,19 @@ canvas#c {
 #joystick-outer {
     width: 150px;
     height: 150px;
-    border: 2px solid #333; /* Přidáno zpět jemné ohraničení */
+    border: 2px solid #333; 
     border-radius: 50%;
     margin: 10px 0 10px auto; 
     position: relative;
     overflow: hidden; 
-    cursor: grab; /* Můžeme táhnout za celé kolo */
+    cursor: grab; 
     touch-action: none;
     
-    /* Vytvoření mřížky (Grid) */
     background-color: #000000;
     background-image: linear-gradient(to right, #111 1px, transparent 1px), 
                       linear-gradient(to bottom, #111 1px, transparent 1px);
     background-size: 15px 15px; 
     
-    /* Základní box-shadow, který se bude měnit JS */
     box-shadow: 0 0 0 rgba(0, 255, 0, 0); 
     transition: box-shadow 0.1s;
 }
@@ -131,7 +145,6 @@ canvas#c {
     height: 100%;
     border-radius: 50%;
     
-    /* Přidání šumu/zrna (noise/grain effect) */
     background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5QQCDh0j6zH+8AAAAAJKVRYdFjo'); 
     background-size: 2px 2px;
     opacity: 0.15; 
@@ -139,9 +152,9 @@ canvas#c {
 }
 
 #joystick-handle {
-    /* Handle zůstává pevně uprostřed, slouží jako referenční bod */
-    width: 5px;
-    height: 5px;
+    /* Handle zůstává pevně uprostřed */
+    width: 10px; /* ZVĚTŠENO pro lepší blur */
+    height: 10px; /* ZVĚTŠENO pro lepší blur */
     background: #ffffff; 
     border: none;
     border-radius: 50%;
@@ -149,20 +162,12 @@ canvas#c {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    cursor: default; /* Kolečko netáhneme */
+    cursor: default; 
     z-index: 10;
-    box-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 1);
+    filter: blur(2px); /* NOVÉ: PŘIDÁN EFEKT ROZMAZÁNÍ */
 }
 
-
-#current-coords {
-    font-size: 1.2vw;
-    text-align: right;
-    color: #0f0; 
-    word-break: break-all;
-    min-height: 2em;
-    margin-top: 15px;
-}
 
 /* ------------------------------------------- */
 /* 2. Media Query pro Mobil na šířku (< 800px) */
@@ -173,9 +178,9 @@ canvas#c {
         flex-direction: column;
     }
 
-    #left-area { width: 100%; height: 65vh; padding: 10px; }
+    #left-area { width: 100%; height: 65vh; padding: 0; }
     #right-ui-block { width: 100%; height: 35vh; padding: 10px; text-align: left; }
-    canvas#c { top: 40px; right: 10px; bottom: 10px; left: 10px; }
+    canvas#c { top: 0; right: 0; bottom: 0; left: 0; }
 
     #explore-label { font-size: 4vh; letter-spacing: 0.5vh; top: 10px; left: 10px; }
     #gpw-label { font-size: 10vh; line-height: 1; }
@@ -193,12 +198,12 @@ canvas#c {
     }
 
     #joystick-handle {
-        width: 5px; 
-        height: 5px;
+        width: 8px; 
+        height: 8px;
     }
 
     #current-coords {
-        font-size: 1.8vh;
+        font-size: 2.2vh;
         text-align: left;
     }
 }
