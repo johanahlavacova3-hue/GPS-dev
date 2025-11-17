@@ -32,11 +32,21 @@
         <div id="gps-hint">Zadejte jakékoliv souřadnice </div>
 
         <div id="joystick-container">
+            <h3>Jemná úprava (Drag)</h3>
             <div id="joystick-outer">
                 <div id="joystick-handle"></div>
             </div>
             <div id="current-coords"></div>
         </div>
+
+        <div id="export-container">
+            <h3>Export modelu</h3>
+            <button id="export-png-button" class="export-button">Stáhnout PNG (průhledné)</button>
+            <button id="export-glb-button" class="export-button">Stáhnout 3D (GLB)</button>
+            <button id="export-stl-button" class="export-button">Stáhnout 3D (STL)</button>
+            <div id="export-message"></div>
+        </div>
+
     </div>
     
     <script type="module" src="script.js"></script>
