@@ -1,29 +1,27 @@
 body {
     margin: 0;
-    overflow: hidden; /* Zajišťuje, že se nebude rol ovat */
+    overflow: hidden; 
     background-color: #000000;
     color: #fff;
     font-family: 'Geist Mono', monospace;
-    height: 100vh; /* Zajistí, že body zabere celou výšku okna */
-    display: flex; /* Použijeme flexbox pro velké obrazovky */
+    height: 100vh; 
+    display: flex; 
 }
 
 /* ------------------------------------------- */
 /* 1. Rozvržení pro Desktop / Větší tablety (> 1000px) */
 /* ------------------------------------------- */
 
-/* Levý sloupec pro EXPLORE a Canvas */
 #left-area {
-    width: 75%; /* 75% šířky pro 3D scénu */
+    width: 75%; 
     height: 100vh;
     position: relative;
     padding: 20px;
     box-sizing: border-box;
 }
 
-/* Pravý sloupec pro GRPW a GPS input */
 #right-ui-block {
-    width: 25%; /* 25% šířky pro UI */
+    width: 25%; 
     height: 100vh;
     display: flex;
     flex-direction: column;
@@ -32,13 +30,12 @@ body {
     box-sizing: border-box;
     text-align: right; 
     position: relative; 
-    gap: 15px; /* Mezery mezi UI prvky */
+    gap: 15px; 
 }
 
-/* 3D KANVAS - Responzivní, vyplní celou levou oblast */
 canvas#c {
     position: absolute;
-    top: 60px; /* Ponecháme prostor pro EXPLORE */
+    top: 60px; 
     right: 20px;
     bottom: 20px;
     left: 20px;
@@ -47,7 +44,6 @@ canvas#c {
     border: 1px solid #333;
 }
 
-/* Nápis EXPLORE */
 #explore-label {
     position: absolute;
     top: 20px;
@@ -57,7 +53,6 @@ canvas#c {
     font-weight: 500;
 }
 
-/* Pravý UI Blok - Textové styly */
 #gpw-label {
     font-size: 8vw; 
     line-height: 0.9;
@@ -71,7 +66,6 @@ canvas#c {
     margin-bottom: 20px;
 }
 
-/* GPS Vstupní pole */
 #gps-input {
     width: 100%;
     padding: 10px;
@@ -90,7 +84,7 @@ canvas#c {
     margin-top: -10px; 
 }
 
-/* --- STYLY JOYSTICKU --- */
+/* --- STYLY KRUHOVÉHO JOYSTICKU --- */
 #joystick-container {
     margin-top: 20px;
     padding-top: 10px;
@@ -105,40 +99,37 @@ canvas#c {
     margin: 0 0 10px 0;
 }
 
-#joystick-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr 1fr;
-    gap: 5px;
-    max-width: 150px; /* Pevná velikost pro Desktop */
+#joystick-outer {
+    /* Základní rozměry a tvar vnějšího prstence */
+    width: 150px;
+    height: 150px;
+    border: 2px solid #555;
+    border-radius: 50%;
     margin: 10px 0 10px auto; /* Zarovnání doprava */
+    position: relative;
+    background: #111;
 }
 
-#joystick-grid > div {
-    grid-column: 1 / 4; 
-    display: contents; 
+#joystick-handle {
+    /* Tažné kolečko uprostřed */
+    width: 40px;
+    height: 40px;
+    background: #555;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    cursor: grab;
+    touch-action: none; /* Důležité pro mobilní tažení */
 }
 
-#up-btn { grid-column: 2 / 3; grid-row: 1 / 2; }
-#down-btn { grid-column: 2 / 3; grid-row: 3 / 4; }
-#left-btn { grid-column: 1 / 2; grid-row: 2 / 3; }
-#right-btn { grid-column: 3 / 4; grid-row: 2 / 3; }
-
-#joystick-grid button {
-    background: #222;
-    color: #fff;
-    border: 1px solid #555;
-    cursor: pointer;
-    font-size: 1.5vw; 
-    line-height: 1;
-    transition: background 0.1s;
-    width: 100%;
-    aspect-ratio: 1 / 1; 
+#joystick-handle:active {
+    cursor: grabbing;
+    background: #888;
 }
 
-#joystick-grid button:hover {
-    background: #444;
-}
 
 #current-coords {
     font-size: 1.2vw;
@@ -146,6 +137,7 @@ canvas#c {
     color: #0f0; 
     word-break: break-all;
     min-height: 2em;
+    margin-top: 15px;
 }
 
 /* ------------------------------------------- */
@@ -157,68 +149,30 @@ canvas#c {
         flex-direction: column;
     }
 
-    #left-area {
-        width: 100%;
-        height: 65vh; 
-        padding: 10px;
-    }
-    
-    #right-ui-block {
-        width: 100%;
-        height: 35vh; 
-        padding: 10px;
-        text-align: left; 
-    }
+    #left-area { width: 100%; height: 65vh; padding: 10px; }
+    #right-ui-block { width: 100%; height: 35vh; padding: 10px; text-align: left; }
+    canvas#c { top: 40px; right: 10px; bottom: 10px; left: 10px; }
 
-    /* Canvas */
-    canvas#c {
-        top: 40px; 
-        right: 10px;
-        bottom: 10px;
-        left: 10px;
-    }
-
-    /* Text */
-    #explore-label {
-        font-size: 4vh;
-        letter-spacing: 0.5vh;
-        top: 10px;
-        left: 10px;
-    }
-    
-    #gpw-label {
-        font-size: 10vh;
-        line-height: 1;
-    }
-
-    #coords-label {
-        font-size: 2vh;
-        margin-bottom: 10px;
-    }
-
-    #gps-input {
-        font-size: 3vh;
-        padding: 5px;
-    }
-
-    #gps-hint {
-        font-size: 1.5vh;
-        margin-top: 5px;
-    }
+    #explore-label { font-size: 4vh; letter-spacing: 0.5vh; top: 10px; left: 10px; }
+    #gpw-label { font-size: 10vh; line-height: 1; }
+    #coords-label { font-size: 2vh; margin-bottom: 10px; }
+    #gps-input { font-size: 3vh; padding: 5px; }
+    #gps-hint { font-size: 1.5vh; margin-top: 5px; }
     
     /* Joystick pro mobil */
-    #joystick-container h3 {
-        font-size: 2.5vh;
-        text-align: left;
+    #joystick-container h3 { font-size: 2.5vh; text-align: left; }
+
+    #joystick-outer {
+        width: 120px; /* Menší na mobilu */
+        height: 120px;
+        margin: 10px 0; /* Zarovnání doleva */
     }
 
-    #joystick-grid {
-        max-width: 100%; 
-        margin: 10px 0; /* Zarovnání doleva na mobilu */
+    #joystick-handle {
+        width: 30px;
+        height: 30px;
     }
-    #joystick-grid button {
-        font-size: 3vh; /* Velká tlačítka */
-    }
+
     #current-coords {
         font-size: 1.8vh;
         text-align: left;
