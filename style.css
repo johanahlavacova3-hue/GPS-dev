@@ -14,7 +14,7 @@ body {
 
 #left-area {
     width: 75%; 
-    height: 100vh;
+    height: 100vh; /* OPRAVENO pro správné zobrazení */
     position: relative;
     padding: 20px;
     box-sizing: border-box;
@@ -54,7 +54,7 @@ canvas#c {
 }
 
 #gpw-label {
-    font-size: 8vw; 
+    font-size: 7vw; 
     line-height: 0.9;
     font-weight: 900;
     margin-bottom: 5px;
@@ -69,8 +69,8 @@ canvas#c {
 #gps-input {
     width: 100%;
     padding: 10px;
-    background: #111;
-    border: 1px solid #333;
+    background: #000000;
+    border: 10px solid #3B3B3B;
     color: #fff;
     font-family: 'Geist Mono', monospace;
     font-size: 1.5vw;
@@ -84,7 +84,7 @@ canvas#c {
     margin-top: -10px; 
 }
 
-/* --- STYLY KRUHOVÉHO JOYSTICKU --- */
+/* --- STYLY KRUHOVÉHO JOYSTICKU (s mřížkou a záři) --- */
 #joystick-container {
     margin-top: 20px;
     padding-top: 10px;
@@ -103,31 +103,62 @@ canvas#c {
     /* Základní rozměry a tvar vnějšího prstence */
     width: 150px;
     height: 150px;
-    border: 2px solid #555;
+    border: none; 
     border-radius: 50%;
-    margin: 10px 0 10px auto; /* Zarovnání doprava */
+    margin: 10px 0 10px auto; 
     position: relative;
-    background: #111;
+    overflow: hidden; 
+    
+    /* Vytvoření mřížky (Grid) */
+    background-color: #000000;
+    background-image: linear-gradient(to right, #330000 1px, transparent 1px), 
+                      linear-gradient(to bottom, #330000 1px, transparent 1px);
+    background-size: 15px 15px; 
+    
+    /* Zelený zářící kruh uvnitř */
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.4) inset;
+}
+
+/* Pseudo-element pro ZELENÝ OPAR s šumem */
+#joystick-outer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    
+    /* Přidání šumu/zrna (noise/grain effect) */
+    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5QQCDh0j6zH+8AAAAAJKVRYdFjo'); 
+    background-size: 2px 2px;
+    opacity: 0.15; 
+    pointer-events: none; 
 }
 
 #joystick-handle {
-    /* Tažné kolečko uprostřed */
-    width: 40px;
-    height: 40px;
-    background: #555;
-    border: 2px solid #fff;
+    /* Tažné kolečko - malý bílý bod */
+    width: 5px;
+    height: 5px;
+    background: #ffffff; 
+    border: none;
     border-radius: 50%;
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     cursor: grab;
-    touch-action: none; /* Důležité pro mobilní tažení */
+    touch-action: none; 
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.8); 
+    z-index: 10;
+    transition: transform 0.2s, left 0.2s, top 0.2s, background 0.2s; 
 }
 
 #joystick-handle:active {
     cursor: grabbing;
-    background: #888;
+    background: #aaa;
+    transform: translate(-50%, -50%) scale(1.2);
+    transition: none; 
 }
 
 
@@ -163,14 +194,14 @@ canvas#c {
     #joystick-container h3 { font-size: 2.5vh; text-align: left; }
 
     #joystick-outer {
-        width: 120px; /* Menší na mobilu */
+        width: 120px; 
         height: 120px;
-        margin: 10px 0; /* Zarovnání doleva */
+        margin: 10px 0; 
     }
 
     #joystick-handle {
-        width: 30px;
-        height: 30px;
+        width: 5px; 
+        height: 5px;
     }
 
     #current-coords {
