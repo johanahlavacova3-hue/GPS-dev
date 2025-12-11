@@ -236,7 +236,6 @@ function downloadGLB() {
 // Přidání listenerů pro tlačítka
 document.getElementById('download-png').addEventListener('click', downloadPNG);
 document.getElementById('download-stl').addEventListener('click', downloadSTL);
-document.getElementById('download-glb').addEventListener('click', downloadGLB);
 
 // ---- ANIMAČNÍ SMYČKA ----
 function animate() {
