@@ -13,8 +13,8 @@ let offsetLon = 0;
 // Konstanta pro převod pixelů tažení na stupně souřadnic.
 // 100px posunu v joysticku by mělo odpovídat maximálnímu offsetu.
 const MAX_PIXEL_OFFSET = 75; // Polovina šířky joystick-outer (150px / 2)
-const MAX_DEGREE_OFFSET_LAT = 0.0005; // Max posun na šířce (cca 50m)
-const MAX_DEGREE_OFFSET_LON = 0.0008; // Max posun na délce (cca 50m)
+const MAX_DEGREE_OFFSET_LAT = 0.00005; // Max posun na šířce (cca 50m)
+const MAX_DEGREE_OFFSET_LON = 0.00008; // Max posun na délce (cca 50m)
 let isDragging = false;
 let joystickOuter, joystickHandle;
 // ... (ZÁKLADNÍ NASTAVENÍ SCÉNY) ...
